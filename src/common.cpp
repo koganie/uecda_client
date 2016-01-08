@@ -54,30 +54,32 @@ int compCard(int a[8][15], int b[8][15]){
     return 1;
 }
 
-void setUnsubmitted(int unsubmitted[8][15], int hands[8][15]){
+void setGomi(int gomi[8][15], int hands[8][15]){
+    //自分の手札は相手が持ちえない
     int i,j;
     for(i=0;i<4;i++){
         for(j=1;j<=13;j++){
             if(hands[i][j]!=0){
-                unsubmitted[i][j] = 1;
+                gomi[i][j] = 1;
             }
         }
     }
     if(hands[4][1]!=0){
-        unsubmitted[4][1] = 1;
+        gomi[4][1] = 1;
     }
 }
 
-void updateUnsubmitted(int unsubmitted[8][15], int bafuda[8][15]){
+void updateGomi(int gomi[8][15], int bafuda[8][15]){
     int i,j;
     for(i=0;i<5;i++){
         for(j=0;j<15;j++){
-            if(bafuda[i][j]!=0){
-                if(bafuda[i][j]==2){
-                    unsubmitted[4][1] = 1;
-                }else{
-                    unsubmitted[i][j] = 1;
-                }
+            if(bafuda[i][j]==0){//提出したわけではない
+            }
+            else if(bafuda[i][j]==2){//jokerやんけ
+                gomi[4][1] = 1;
+            }
+            else{//普通のカード
+                gomi[i][j] = 1;
             }
         }
     }

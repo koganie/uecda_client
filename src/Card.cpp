@@ -15,6 +15,16 @@ Card::Card(int64 cd, int suits, int num, int rank, int rank2, int jps, int jpr){
     
     bzero(mCards, sizeof(mCards));
     setBitTo815( mCards );//815配列にも格納する
+    
+    mKaidan=isKaidan();
+    mPair=isPair();
+    mTanki=isTanki();
+    mPass=isPass();
+    mJoker=isJTanki();
+    
+    //副作用
+    mKakumei=isKakumei();
+    m8giri=is8giri();
 }
 
 bool Card::isKaidan() const{
@@ -25,6 +35,9 @@ bool Card::isPair() const{
 }
 bool Card::isTanki() const{
     return mNum==1;
+}
+bool Card::isJUsed() const{
+    return ( (mCardBit&IS_JUSED)!=0 );//jokerが立っている
 }
 bool Card::isJTanki() const{
     return ( (mCardBit&IS_JUSED)!=0 && (mCardBit&IS_NUM(1))!=0);//両方立っている
@@ -49,6 +62,8 @@ int64 Card::getCardBit() const{
     
 void Card::clear(){
     mCardBit = 0ull;
+    mSuits = 0;
+    mSpe3 = false;
     mNum = 0;
     mRankR = 0;
     mRankL = 0;
@@ -63,6 +78,9 @@ void Card::init(){
 
 void Card::demoPass(){
     clear();
+    mCardBit = IS_PASS;
+    bzero(mCards, sizeof(mCards));
+    setBitTo815( mCards );//815配列にも格納する
 }
     
 void Card::setBitTo815(int dest[8][15]) const{
@@ -88,9 +106,14 @@ void Card::printBit() const{
     << /*", sbr" << isShibari() <<*/ ", 8g" << is8giri() 
     << ", num" << mNum << ", rktT" << mRankR << ", rkr" << mRankL 
     << ", suit" << mSuits << std::endl;
-    
+    cout << "pass" << isPass() << endl;
+    cout << "isSpade3" << isSpade3() << endl;
+    cout << "jr"<<mJposRank<<" " <<mJposSuit<<" "<<isJUsed()<<endl;
+    cout << "a" << endl;
     setBitTo815(temp);
+    cout << "b" << endl;
     print515(temp);
+    cout << "c" << endl;
 }
 
 void Card::printBit2() const{
@@ -222,6 +245,7 @@ void Card::setBit(int src[8][15]){
     mCardBit |= (count<7) ? IS_NUM(count) : IS_NUM(7);//6枚まではビットが使える
 }
 Card::Card(){
+    clear();
 }
 
 void removeLap(vector<Card> *vecCard, int64 cdBit){
@@ -247,28 +271,36 @@ void removePass(vector<Card> *vecCard){
     }
 }
 
-bool compYakuRankL(const Card &c1, const Card &c2){
-    return ( c1.mRankL > c2.mRankL);
+bool isCard1WeakerThanCard2WhenNotKakumei(const Card &c1, const Card &c2){
+    //通常時（革命でない）とき、第1引数が第2引数よりも小さいとき1を返す
+    return ( c1.mRankL < c2.mRankL);
 }
 
-bool compYakuRankR(const Card &c1, const Card &c2){
-    return ( c1.mRankR < c2.mRankR);
+bool isCard1WeakerThanCard2WhenKakumei(const Card &c1, const Card &c2){
+    //革命のとき、第1引数が第2引数よりも小さいとき1を返す
+    return ( c1.mRankR > c2.mRankR);
 }
 
-int selectBigCards(const std::vector<Card> &vecCard){
-    if(vecCard.size()==1){
+int selectBigCards(Card *card, const std::vector<Card> &vecCard){
+    if(vecCard.size()==0){
+        cout << "naka nai" << endl;
+        exit(1);
+    }else if(vecCard.size()==1){
+        *card = vecCard[0];
         return 0;
     }
-    
-    int index = -1;
-    int maxNum = 0;
-    for(int i=0;i<vecCard.size();i++){
+    int index = 0;
+    int maxNum = vecCard[0].mNum;
+    for(int i=1;i<vecCard.size();i++){
         if( vecCard[i].mNum > maxNum ){
             maxNum = vecCard[i].mNum;
             index = i;
         }
     }
     if(index >= 0){
+        //cout<<"yyyy "<<index<<" "<<vecCard.size()<<endl;
+        //vecCard[index].printBit();
+        *card = vecCard[index];
         return index;
     }else{
         std::cout << "selectBigCards" << vecCard.size() << std::endl;
@@ -276,7 +308,8 @@ int selectBigCards(const std::vector<Card> &vecCard){
     }
 }
 
-int selectLowCards(const std::vector<Card> &vecCard){
+/*
+int selectLowCards(Card *card, const std::vector<Card> &vecCard){
     if(vecCard.size()==1){
         return 0;
     }
@@ -290,9 +323,11 @@ int selectLowCards(const std::vector<Card> &vecCard){
         }
     }
     if(index >= 0){
+        card = vecCard[index];
         return index;
     }else{
         std::cout << "selectLowCards" << std::endl;
         exit(1);
     }
 }
+*/

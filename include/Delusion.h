@@ -14,22 +14,16 @@ void printVC(vector<Card> yaku);
 void muddleVector(vector<int> *vec);
 void makeDeck(vector<int> *deck, const int dust[8][15]);
 
-void randomCardDevide(int hands[5][8][15], vector<int> *deck, int target, int num);
+void randomCardDevide(int hands[8][15], vector<int> *deck, int num);
 
 class Delusion{
 private:
     Table mTable;     //妄想のテーブル情報
     vector< vector<Card> > mYakus;//各プレイヤーの合法手集合
-    int mTarget;
+    int mTarget;    //このプレイヤーがあがったら妄想が終わる
     
 public:
     Delusion(const Table &table, const int unsubmitted[8][15], const vector<Card> &yaku, int target);
-    
-    Card submitVirtualDefault();
-    
-    void removeYaku(int64 cdBit);
-
-    void updateSimTable(const Card &cd);
     
     int forwardDelusion(const Card &cd, int *depth);
     
@@ -37,5 +31,6 @@ public:
     int startDelusion(const Card &submit_cards, int *depth);
 };
 
+int selectSubmitCardsByDelusion(Card *select_cards, const Table &table, const vector<Card> &yaku, const int dust[8][15], int hands[8][15]);
 
 #endif

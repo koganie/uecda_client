@@ -6,16 +6,15 @@
 #include <iostream>
 #include <vector>
 
-#include "common.h"
-#include "myfunc.h"
+#include "common.h"//配列の出力、未提出札の更新（後々整理）
+#include "myfunc.h"//CardとCard、Cardと場札の大きさチェック（？）
 
-#include "Game.h"
-#include "changeCards.h"
-#include "yaku.h"
-#include "delusion.h"
-#include "selectCards.h"
+#include "Game.h"//サーバとの通信など
+#include "changeCards.h"//カード交換の仕方
+#include "yaku.h"//合法手集合の操作
 
-const int g_logging=0;                     //ログ取りをするか否かを判定するための変数
+#include "Delusion.h"//妄想による提出方法
+#include "default.h"//デフォルトクライアント的な提出方法
 
 using namespace std;
 
@@ -37,7 +36,7 @@ int main(int argc,char* argv[]){
         
         int hands[8][15]={{0}};       //手札をおさめる変数
         int bafuda[8][15]={{0}};      //場札をおさめる変数
-        int unsubmitted[8][15]={{0}};  //未提出カード集合（相手の持ちうるカード）
+        int gomi[8][15]={{0}};  //すでに提出されたカード集合
         
         /*ここまで*/
         
@@ -62,18 +61,15 @@ int main(int argc,char* argv[]){
             
             game.receiveCards( hands );//そのターンの手札を受け取り
             
-            if( game.firstGame() ){ //最初回であれば
+            if( game.isFirstTime() ){ //最初回であれば
                 table.firstGame(hands); //各プレイヤーの情報を保存
-                //getState(hands);        //デフォルトの場の状態の読み出し
-                setUnsubmitted(unsubmitted, hands);   //ごみに自分の手札を入れる
+                setGomi(gomi, hands);   //ごみに自分の手札を入れる
             }
             else{           //次回からは更新していく
-                //getState(hands);        //デフォルトの場の状態の読み出し
                 table.setBaInfo(hands); //場の状況の更新
             }
             
-            //if( table.whoseTurn() == MY_PLAYER_NUM ){  //自分のターンであるなら
-            if( table.isTurn( game.myPlayerNum() ) ){
+            if( table.isTurn( game.myPlayerNum() ) ){//自分のターンであるなら提出するカードを選択する
                 int cards[8][15]={{0}};
                 Card select_cards;
                 bool is_passed;
@@ -81,8 +77,8 @@ int main(int argc,char* argv[]){
                 vector<Card> myYaku;//自分の手札から生成できる合法手の集合体
                 makeAllYaku(&myYaku, hands);//合法手をリストアップする
                 
-                selectByDelusion( select_cards, table, myYaku, unsubmitted, hands);//妄想による選択
-                //selectLikeDefault( select_cards, table, myYaku, unsubmitted, hands );//標準クライアントライクな選択
+                //selectSubmitCardsByDelusion( &select_cards, table, myYaku, gomi, hands);//妄想による選択
+                selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
                 select_cards.setBitTo815( cards );//815配列に成形する
                 
                 game.sendCard( cards );//サーバに提示する
@@ -115,8 +111,8 @@ int main(int argc,char* argv[]){
             
             game.receiveCards(bafuda);//場札を取得する
             table.setBafuda(bafuda);//tableに保存する
-            updateUnsubmitted(unsubmitted, bafuda);//未提出札の更新
-
+            updateGomi(gomi, bafuda);//すでに提出された札の更新
+            
             game.checkGameEnd();
         }//1ゲームが終わるまでの繰り返しここまで
     }

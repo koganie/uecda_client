@@ -5,6 +5,64 @@ using namespace std;
 Table::Table(){
 }
 
+bool Table::isOnset() const{
+    return (baBit&(IS_BA_ONSET))!=0;//‹óê‚©H
+}
+bool Table::isKaidan() const{
+    return (baBit&(IS_BA_KAIDAN))!=0;//ŠK’i‚©H
+}
+bool Table::isPair() const{
+    return (baBit&(IS_BA_PAIR))!=0;//ƒyƒA‚©H
+}
+bool Table::isTanki() const{
+    return (baBit&(IS_BA_TANKI))!=0;//’P‹R‚©H
+}
+bool Table::isKakumei() const{
+    return (baBit&(IS_BA_KAKUMEI))!=0;//Šv–½‚©H
+}
+bool Table::isShibari() const{
+    return (baBit&(IS_BA_SHIBARI))!=0;//”›‚è‚©H
+}
+bool Table::isJTanki() const{
+    return (baBit&(IS_BA_JOKER))!=0;//ƒWƒ‡[ƒJ[’P‹R‚©H
+}
+void Table::setOnset(bool flag){//‹óêƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_ONSET;
+    else        baBit &= ~IS_BA_ONSET;
+}
+void Table::setKakumei(bool flag){//Šv–½ƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_KAKUMEI;
+    else        baBit &= ~IS_BA_KAKUMEI;
+}
+void Table::revKakumei(){//Šv–½‚ğ”½“]‚·‚é
+    if(isKakumei()) setKakumei(0);//Šv–½ó‘Ô‚Å‚ ‚é‚È‚ç–ß‚·
+    else            setKakumei(1);//’Êíó‘Ô‚Å‚ ‚é‚È‚ç—§‚Ä‚é
+}
+void Table::setKaidan(bool flag){//ŠK’iƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_KAIDAN;
+    else        baBit &= ~IS_BA_KAIDAN;
+}
+void Table::setPair(bool flag){//ƒyƒAƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_PAIR;
+    else        baBit &= ~IS_BA_PAIR;
+}
+void Table::setTanki(bool flag){//’P‹Rƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_TANKI;
+    else        baBit &= ~IS_BA_TANKI;
+}
+void Table::setShibari(bool flag){//”›‚èƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_SHIBARI;
+    else        baBit &= ~IS_BA_SHIBARI;
+}
+void Table::setJTanki(bool flag){//ƒWƒ‡[ƒJ[’P‹Rƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
+    if(flag)    baBit |=  IS_BA_JOKER;
+    else        baBit &= ~IS_BA_JOKER;
+}
+
+int Table::whoseTurn() const{//Œ»İ‚Ìƒ^[ƒ“‚Ìl‚ÌƒvƒŒƒCƒ„[”Ô†‚ğ•Ô‚·
+    return mPlayers.turn;
+}
+
 void Table::firstGame(int cards[8][15]){//ƒQ[ƒ€‚Ì‰Šú‰»
     baBit = 0;
     mNum = 0;
@@ -64,7 +122,7 @@ void Table::setBaInfo(int cards[8][15]){//•’Êó‚¯æ‚é‚Ì‚ÍèD‚Å‚ ‚èA5s–ÚˆÈ‰º‚
 	mPlayers.update(cards);
 }
     
-void Table::print(){
+void Table::print() const{
     std::cout << "ON" << isOnset() 
      <<", KA" << isKaidan()
      <<", PA" << isPair()
@@ -103,19 +161,24 @@ void Table::simSubmit(const Card &cd){
     //ƒJ[ƒhcd‚ğ’ño‚µ‚½‚ÌXV
 	//cout << "submit " << endl;
 	//cd.printBit();
-    setOnset(0);            //onset‰ğœ
+    
     if(cd.mNum==0){         //ƒpƒX‚ğ‚µ‚½
         if(simPass()==1){   //‘Sˆõ‚É’ñoŒ ‚ª‚È‚­‚È‚é
             purge();        //ê‚ª—¬‚ê‚é
         }
     }
     else{//‚È‚ñ‚ç‚©o‚µ‚½
-        mPlayers.simSubmit(cd);//ƒvƒŒƒCƒ„[î•ñ‚ÌXV
+        
+        mPlayers.simSubmit(cd);//ƒvƒŒƒCƒ„[î•ñ‚ÌXVièD–‡”E‚ ‚ª‚èj
+        if(mCard.isKakumei())revKakumei();//Šv–½‚ğ‹N‚±‚µ‚½‚ç”½“]
         
         if(cd.is8giri()==1){//8Ø‚è‚¾‚Á‚½
             purge();        //ê‚ğ—¬‚·
         }else{
+            setOnset(0);            //onset‰ğœ
+            
             mCard = cd;     //êD‚ğ’u‚«Š·‚¦‚é
+            
             setKaidan( mCard.isKaidan() );
             setPair( mCard.isPair() );
             

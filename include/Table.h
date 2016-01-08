@@ -17,67 +17,27 @@ private:
 	// 6:ジョーカー単騎
 	
 public:
-    inline bool isOnset() const{
-        return (baBit&(IS_BA_ONSET))!=0;//空場か？
-    }
-    inline bool isKaidan() const{
-        return (baBit&(IS_BA_KAIDAN))!=0;//階段か？
-    }
-    inline bool isPair() const{
-        return (baBit&(IS_BA_PAIR))!=0;//ペアか？
-    }
-    inline bool isTanki() const{
-        return (baBit&(IS_BA_TANKI))!=0;//単騎か？
-    }
-    inline bool isKakumei() const{
-        return (baBit&(IS_BA_KAKUMEI))!=0;//革命か？
-    }
-    inline bool isShibari() const{
-        return (baBit&(IS_BA_SHIBARI))!=0;//縛りか？
-    }
-    inline bool isJTanki() const{
-        return (baBit&(IS_BA_JOKER))!=0;//ジョーカー単騎か？
-    }
-    inline void setOnset(bool flag){//空場フラグをセットする
-        if(flag)    baBit |=  IS_BA_ONSET;
-        else        baBit &= ~IS_BA_ONSET;
-    }
-    inline void setKakumei(bool flag){//革命フラグをセットする
-        if(flag)    baBit |=  IS_BA_KAKUMEI;
-        else        baBit &= ~IS_BA_KAKUMEI;
-    }
-    inline void revKakumei(){//革命を反転する
-        if(isKakumei()) setKakumei(0);//革命状態であるなら戻す
-        else            setKakumei(1);//通常状態であるなら立てる
-    }
-    inline void setKaidan(bool flag){//階段フラグをセットする
-        if(flag)    baBit |=  IS_BA_KAIDAN;
-        else        baBit &= ~IS_BA_KAIDAN;
-    }
-    inline void setPair(bool flag){//ペアフラグをセットする
-        if(flag)    baBit |=  IS_BA_PAIR;
-        else        baBit &= ~IS_BA_PAIR;
-    }
-    inline void setTanki(bool flag){//単騎フラグをセットする
-        if(flag)    baBit |=  IS_BA_TANKI;
-        else        baBit &= ~IS_BA_TANKI;
-    }
-    inline void setShibari(bool flag){//縛りフラグをセットする
-        if(flag)    baBit |=  IS_BA_SHIBARI;
-        else        baBit &= ~IS_BA_SHIBARI;
-    }
-    inline void setJTanki(bool flag){//ジョーカー単騎フラグをセットする
-        if(flag)    baBit |=  IS_BA_JOKER;
-        else        baBit &= ~IS_BA_JOKER;
-    }
-	
-    inline int whoseTurn() const{//現在のターンの人のプレイヤー番号を返す
-        return mPlayers.turn;
-    }
+    bool isOnset() const;
+    bool isKaidan() const;
+    bool isPair() const;
+    bool isTanki() const;
+    bool isKakumei() const;
+    bool isShibari() const;
+    bool isJTanki() const;
+    void setOnset(bool flag);//空場フラグをセットする
+    void setKakumei(bool flag);//革命フラグをセットする
+    void revKakumei();//革命を反転する
+    void setKaidan(bool flag);//階段フラグをセットする
+    void setPair(bool flag);//ペアフラグをセットする
+    void setTanki(bool flag);//単騎フラグをセットする
+    void setShibari(bool flag);//縛りフラグをセットする
+    void setJTanki(bool flag);//ジョーカー単騎フラグをセットする
+	int whoseTurn() const;//現在のターンの人のプレイヤー番号を返す
+    
     int mNum;
     int mRank;
-    int mRankR;         //ランク（強さ）
-    int mRankL;         //ランク（強さ）
+    //int mRankR;         //ランク（強さ）
+    //int mRankL;         //ランク（強さ）
     int mSuits;
     Card mCard;         //場札
     Players mPlayers;   //各プレイヤーの情報
@@ -88,7 +48,7 @@ public:
     void purge();
     void setBafuda(int cards[8][15]);
     void setBaInfo(int cards[8][15]);
-    void print();
+    void print() const;
     
     bool isTurn(int player_num);
     

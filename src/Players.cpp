@@ -19,7 +19,7 @@ int Players::getCardsNum(){
     return cards_num[turn];
 }
 
-void Players::print(){
+void Players::print() const{
     int i;
     printf("num=");
     for(i=0;i<5;i++)printf("%d,", cards_num[i]);
@@ -34,6 +34,7 @@ void Players::print(){
     printf("\ngoal=%d ", isGoaled);
     for(i=0;i<5;i++)printf("%d,", (isGoaled&(1<<i))!=0 );
     
+    printf("\nturn=%d \n", turn);
 }
 
 void Players::update(int cards[8][15]){
@@ -121,6 +122,7 @@ void Players::simSubmit(const Card &cd){//カードを提出した後処理
         printf("okasisi!!\n");
         printf("%d %d\n", cards_num[turn], cd.mNum);
         cd.printBit();
+        cd.printBit3();
         exit(1);
     }
     

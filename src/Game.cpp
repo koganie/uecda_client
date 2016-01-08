@@ -4,20 +4,16 @@
 #include "Game.h"
 
 Game::Game(int argc,char* argv[]){
-    //server_name         = DEFAULT_SERVER;
-    strncpy(server_name, DEFAULT_SERVER, sizeof(server_name));
-    port                = DEFAULT_PORT;
-    //サーバに通知するクライアント名
-    //client_name         = DEFAULT_NAME;
-    strncpy(client_name, DEFAULT_NAME, sizeof(client_name));
+    //通信用変数にデフォルトの変数を格納する
+    //defineされた定数はGame.hにある
+    //引数で指定されている場合はこの下のwhile文で上書きする
     
-    first_game = true;
-    all_game_end_flag   = false;    //全ゲームが終了したか
-    one_game_end_flag   = false;
-    game_count          = 0;           //ゲームの回数を記憶する
+    strncpy(server_name, DEFAULT_SERVER, sizeof(server_name));//サーバのアドレス
+    port = DEFAULT_PORT;//サーバに通知するポート番号
+    strncpy(client_name, DEFAULT_NAME, sizeof(client_name));//サーバに通知するクライアント名
     
     const char Option[]="[-h server_adress] [-p port] [-n user_name]";
-    int        arg_count=1;
+    int arg_count=1;
 
     while(arg_count<argc){
         if( strcmp(argv[arg_count],"--help")==0){
@@ -54,6 +50,11 @@ Game::Game(int argc,char* argv[]){
         }
         arg_count++;
     }
+    
+    first_time = true;              //1ゲームの最初
+    all_game_end_flag   = false;    //全ゲームが終了したか
+    one_game_end_flag   = false;
+    game_count          = 0;           //ゲームの回数を記憶する
 }
 
 bool Game::isAllGameEnd(){
@@ -61,7 +62,7 @@ bool Game::isAllGameEnd(){
         return true;
     }
     else{                   //まだの場合は
-        first_game = true;  //初回フラグを立てる
+        first_time = true;  //初回フラグを立てる
         game_count++;       //ゲームカウンターを進ませる
         one_game_end_flag = false;//またやり直し
         return false;
@@ -254,13 +255,13 @@ void Game::disconnectToServer(){
     }
 }
 
-bool Game::firstGame(){
-    if(first_game){
-        first_game = false;
-        return true;
+bool Game::isFirstTime(){
+    if(first_time){//最初回だったら
+        first_time = false;//フラグを倒して
+        return true;//最初だと言う
     }
     else{
-        return false;
+        return false;//最初じゃないと言う
     }
 }
 

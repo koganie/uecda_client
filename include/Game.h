@@ -40,7 +40,7 @@ private:
     bool one_game_end_flag;
     int game_count;           //ゲームの回数を記憶する
     
-    bool first_game;
+    bool first_time;            //ゲームの初回
 
 public:
     Game(int argc,char* argv[]);
@@ -58,7 +58,7 @@ public:
     int isPassed();
     int myPlayerNum();
     
-    bool firstGame();
+    bool isFirstTime();
 };
 
 #endif

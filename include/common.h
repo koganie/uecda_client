@@ -68,7 +68,7 @@ void printBit3(int cards[8][15]);   //
 void copy815(int dest[8][15], int src[8][15]);	//8*15形式の配列のコピー
 int count815(int cards[8][15]);		//8*15形式の0でない数を返す
 int compCard(int a[8][15], int b[8][15]);
-void setUnsubmitted(int unsubmitted[8][15], int hands[8][15]);
-void updateUnsubmitted(int unsubmitted[8][15], int hands[8][15]);
+void setGomi(int gomi[8][15], int hands[8][15]);
+void updateGomi(int gomi[8][15], int hands[8][15]);
 
 #endif
