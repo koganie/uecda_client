@@ -1,10 +1,11 @@
 #include <math.h>
+#include <cstdlib>
 #include "default.h"
-#include "yaku.h"
+#include "makeYaku.h"
 
 //#define DEBUG
 
-int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const vector<Card> &yaku){
+int selectSubmitCardsLikeDefault(Yaku *select_cards, const Table &table, const vector<Yaku> &yaku){
     //UECda公式のデフォルトクライアントをまねた提出方法
     //手札から生成できる役の集合（yaku）から、
     //現在の局面（table）に対して提出する手を
@@ -15,7 +16,7 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
         //空場なら何をだしてもよい
         
         //まず階段を探す
-        vector<Card> kaidan;
+        vector<Yaku> kaidan;
         pickKaidan( &kaidan, yaku );//階段だけ集める
         if( kaidan.size() > 0 ){//階段を出せる！
             sortYakuByRank( &kaidan, table.isKakumei() );//弱い順に並び替える
@@ -24,7 +25,7 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
         }
         
         //階段が見つからなかったらペアを探す
-        vector<Card> pair;
+        vector<Yaku> pair;
         pickPair( &pair, yaku );//ペアだけ集める
         if( pair.size() > 0 ){//ペアを出せる！
             sortYakuByRank( &pair, table.isKakumei() );//弱い順に並び替える
@@ -33,7 +34,7 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
         }
         
         //ペアも見つからなかったら単騎を探す
-        vector<Card> tanki;
+        vector<Yaku> tanki;
         pickTanki( &tanki, yaku);//単騎だけ集める
         if( tanki.size() > 0 ){//単騎を出せる！
             sortYakuByRank( &tanki, table.isKakumei() );//弱い順に並び替える
@@ -42,12 +43,12 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
         }
         //単騎も見つからなかったら、手札はゼロのはず
         std::cout << "tefuda ga okashii no ja naika !?" << std::endl;
-        table.print();
-        printCardVec(yaku);
+        //table.print();
+        //printCardVec(yaku);
         exit(1);
     }else{//フォロー局面（場が何かしらある）
         //場札に沿った提出をする必要があるので、まず出せる役だけを集める
-        vector<Card> legalYaku;//操作用役集合
+        vector<Yaku> legalYaku;//操作用役集合
         pickAllLegalYaku( &legalYaku, yaku, table );//パスを除きこの局面で出せるすべての合法手を選定する
         
         if(table.isKaidan()){//場が階段のとき
@@ -60,16 +61,16 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
                 return 0;
             }
         }else if(table.isPair()){//場がペアの場合
-            vector<Card> kasu = legalYaku;//合法手をコピーしてここから温存カードを取り除いていく（しぼりかす）
+            vector<Yaku> kasu = legalYaku;//合法手をコピーしてここから温存カードを取り除いていく（しぼりかす）
             
             if(!table.isShibari()){//縛りではないときは
                 for( int i=0; i < yaku.size(); i++ ){//手札から生成できる役のうち
-                    if( (!yaku[i].isJUsed()) && yaku[i].isPair() && table.mNum < yaku[i].mNum ){//jokerを使わないペアでかつ枚数が場札よりも大きいものがある
+                    if( (!yaku[i].isJUsed()) && yaku[i].isPair() && table.mBafuda.mNum < yaku[i].mNum ){//jokerを使わないペアでかつ枚数が場札よりも大きいものがある
                         removeLap( &kasu, yaku[i].getCardBit() );//そのカードを使うものを消す（しぼる）
                     }
                 }
             }
-            vector<Card> kasuOfKasu = kasu;//かす中のかす
+            vector<Yaku> kasuOfKasu = kasu;//かす中のかす
             removeLap( &kasuOfKasu, IS_JUSED );//かすからさらにジョーカーを使うものを消す
             if( kasuOfKasu.size() > 0 ){//jokerを温存しても出せるか
                 sortYakuByRank( &kasuOfKasu, table.isKakumei() );//弱い順に並べる
@@ -94,7 +95,7 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
             }
         }else if(table.isTanki()){
             //階段・ペアで使うことのできるカードを温存してみる
-            vector<Card> kasu = legalYaku;//コピーしてここから温存カードを取り除く（しぼりかす）
+            vector<Yaku> kasu = legalYaku;//コピーしてここから温存カードを取り除く（しぼりかす）
             for( int i=0; i < yaku.size(); i++ ){//手札から生成できる役の集合のうち
                 if(!yaku[i].isJUsed()){//jokerを使わずに
                     if(yaku[i].isKaidan() || yaku[i].isPair()){//階段かペアを作ることができるなら
@@ -124,6 +125,33 @@ int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const v
             std::cout << "sonnna kyokumen ha nai..." << std::endl;
             exit(1);
         }
+    }
+}
+
+int selectBigCards(Yaku *yaku, const std::vector<Yaku> &allYaku){
+    if(allYaku.size()==0){
+        cout << "naka nai" << endl;
+        exit(1);
+    }else if(allYaku.size()==1){
+        *yaku = allYaku[0];
+        return 0;
+    }
+    int index = 0;
+    int maxNum = allYaku[0].mNum;
+    for(int i=1;i<allYaku.size();i++){
+        if( allYaku[i].mNum > maxNum ){
+            maxNum = allYaku[i].mNum;
+            index = i;
+        }
+    }
+    if(index >= 0){
+        //cout<<"yyyy "<<index<<" "<<vecCard.size()<<endl;
+        //vecCard[index].printBit();
+        *yaku = allYaku[index];
+        return index;
+    }else{
+        std::cout << "selectBigCards" << allYaku.size() << std::endl;
+        exit(1);
     }
 }
 

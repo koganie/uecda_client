@@ -1,5 +1,5 @@
 COMPILER  = g++
-CFLAGS    = -lefence -g -MMD -MP -Wall -Wextra -Winit-self -Wno-missing-field-initializers
+CFLAGS    = -std=c++11 -lefence -g -MMD -MP -Wall -Wextra -Winit-self -Wno-missing-field-initializers
 ifeq "$(shell getconf LONG_BIT)" "64"
   LDFLAGS =
 else

@@ -1,3 +1,5 @@
+#define CLIENT
+
 #include <stdio.h>
 #include <string.h>
 #include <unistd.h>
@@ -11,10 +13,15 @@
 
 #include "Game.h"//サーバとの通信など
 #include "changeCards.h"//カード交換の仕方
-#include "yaku.h"//合法手集合の操作
+#include "Player.h"//プレイヤのクラス
+#include "Table.h"//場の状態のクラス
+#include "Yaku.h"//役のクラス
+#include "makeYaku.h"//合法手集合の操作
 
 #include "Delusion.h"//妄想による提出方法
 #include "default.h"//デフォルトクライアント的な提出方法
+
+#include "debug.h"
 
 using namespace std;
 
@@ -32,7 +39,9 @@ int main(int argc,char* argv[]){
         //tableや手札等もgameに含めてもいいのかもしれないが、
         //一応1試合中に継続して使うものは出しておいてみる
         
-        Table table;            //場の情報用の構造体 //中にPlayersもある
+        Table table;            //場の情報用の構造体
+        Players players;        //players
+        players.setup();
         
         int hands[8][15]={{0}};       //手札をおさめる変数
         int bafuda[8][15]={{0}};      //場札をおさめる変数
@@ -56,33 +65,33 @@ int main(int argc,char* argv[]){
             //つまりこの後、ゲームでもらう手札とこの時点での手札を比べると
             //富豪・大富豪から何を押し付けられたのかが確認できる。
         }
-        
+
         while( !game.isOneGameEnd() ){            //1ゲームが終わるまでの繰り返し
             
             game.receiveCards( hands );//そのターンの手札を受け取り
             
-            if( game.isFirstTime() ){ //最初回であれば
-                table.firstGame(hands); //各プレイヤーの情報を保存
-                setGomi(gomi, hands);   //ごみに自分の手札を入れる
+            if( game.isFirstTime() ){   //最初回であれば
+                table.firstGame(hands);     //最初のセッティング
+                players.setPlayers(hands);  //プレイヤーの情報を保存
+                addCard(gomi, hands);       //相手の持ちえないカードに自分の手札を入れる
             }
-            else{           //次回からは更新していく
+            else{                       //次回からは更新していく
                 table.setBaInfo(hands); //場の状況の更新
+                players.update(hands);  //プレイヤーの情報の更新
             }
             
-            if( table.isTurn( game.myPlayerNum() ) ){//自分のターンであるなら提出するカードを選択する
+            if( players.turnId() == game.myPlayerNum() ){//自分のターンであるなら提出するカードを選択する
                 int cards[8][15]={{0}};
-                Card select_cards;
-                bool is_passed;
-                
-                vector<Card> myYaku;//自分の手札から生成できる合法手の集合体
+                Yaku select_cards;
+                vector<Yaku> myYaku;        //自分の手札から生成できる合法手の集合体
                 makeAllYaku(&myYaku, hands);//合法手をリストアップする
                 
-                //selectSubmitCardsByDelusion( &select_cards, table, myYaku, gomi, hands);//妄想による選択
+                //selectSubmitCardsByDelusion( &select_cards, table, players, myYaku, gomi, hands);//妄想による選択
                 selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
                 select_cards.setBitTo815( cards );//815配列に成形する
                 
                 game.sendCard( cards );//サーバに提示する
-                is_passed = game.isPassed();//受理されたかどうか確認する
+                bool is_passed = game.isPassed();//受理されたかどうか確認する
                 
                 if(is_passed && select_cards.mNum>0){//提出したつもりだったのに受理されなかった
                 	cout << "sippai!" << endl;
@@ -98,23 +107,32 @@ int main(int argc,char* argv[]){
                 }
                 else{//提出した
                     cout << "BFD:";
-                    table.mCard.printBit3();//場札は何か？
+                    cout << table.mBafuda.getStr();//場札は何か？
                     cout << " TFD:";
-                    printBit3(hands);//何を持っているか
+                    printCardStr(hands);//何を持っているか
                     cout << "(" << myYaku.size()-1 << ")";//いくつの合法手が作れるか
                     cout <<  "=>";//そんな中
-                    select_cards.printBit3();//提出した札は
+                    cout << select_cards.getStr();//提出した札は
                     cout << endl;
                 }
                 
             }
             
-            game.receiveCards(bafuda);//場札を取得する
-            table.setBafuda(bafuda);//tableに保存する
-            updateGomi(gomi, bafuda);//すでに提出された札の更新
+            game.receiveCards(bafuda);          //場札を取得する
+            if( table.sameBafuda( bafuda ) ){   //見たけど同じカード（ターンの人がパスをした）
+                players.pass();
+            }else{
+                Yaku yaku;
+                yaku.set815ToYaku( bafuda );    //役形式に変換する
+                table.setBafuda( yaku );        //役を取り換える
+            }
+            
+            addCard2(gomi, bafuda);             //すでに提出された札の更新
             
             game.checkGameEnd();
         }//1ゲームが終わるまでの繰り返しここまで
+        players.sekijun.clear();
+        players.agari.clear();
     }
         
     game.disconnectToServer();

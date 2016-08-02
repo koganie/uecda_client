@@ -4,9 +4,10 @@
 #include <iostream>
 #include <vector>
 
-#include "Card.h"
+#include "Yaku.h"
 #include "Table.h"
 
-int selectSubmitCardsLikeDefault(Card *select_cards, const Table &table, const std::vector<Card> &yaku);
+int selectSubmitCardsLikeDefault(Yaku *select_cards, const Table &table, const std::vector<Yaku> &yaku);
+int selectBigCards(Yaku *yaku, const std::vector<Yaku> &allYaku);
 
 #endif

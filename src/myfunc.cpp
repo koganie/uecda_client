@@ -1,7 +1,7 @@
 
 #include "myfunc.h"
 
-bool compCardAndCard(Card *c1, Card *c2, bool is_kakumei){
+bool compCardAndCard(Yaku *c1, Yaku *c2, bool is_kakumei){
     if(is_kakumei==1){//
         return (c1->mRankL < c2->mRankL);
     }
@@ -10,7 +10,8 @@ bool compCardAndCard(Card *c1, Card *c2, bool is_kakumei){
     }
 }
 
-bool compCardAndTable(Card *c1, Table *table){
+/*
+bool compCardAndTable(Yaku *c1, Table *table){
     if(table->isKakumei()==1){//
         return (c1->mRankL < table->mRank);
     }
@@ -18,6 +19,7 @@ bool compCardAndTable(Card *c1, Table *table){
         return (c1->mRankR > table->mRank);
     }
 }
+*/
 
 /*
 int setDust(int dust[8][15], int hands[8][15]){

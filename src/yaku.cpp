@@ -1,621 +1,567 @@
-#include <algorithm>
-#include "yaku.h"
+#include<iostream>
+#include<string.h>
 
-//合法手役配列の操作用関数群である。
-//vectorのsize()は符号無し整数が返るようなので
-//のちのちいてれーたに変えよう。（なんだ？）
-//引数の名前がよくわからないので後々これも変えよう。
+#include<cstdlib>
+#include <sstream>
 
+#include "Yaku.h"
+#include "bit.h"
+#include "common.h"
+#include "debug.h"
 
+using namespace std;
 
-void makeAllYaku(vector<Card> *allYaku, const int hands[8][15]){
-    //handsから作ることが可能なすべての役を作る
-	makeKaidanFrom815(allYaku, hands);//階段
-    makePairFrom815(allYaku, hands);//ペア
-    makeTankiFrom815(allYaku, hands);//単騎
-    makePass(allYaku);//パス
-}
-
-void pickKaidan(vector<Card> *kaidan, const vector<Card> &allYaku){
-    for(int i=0;i<allYaku.size();i++){
-        if( allYaku[i].isKaidan() ){
-            kaidan->push_back( allYaku[i] );
-        }
-    }
-}
-
-void pickPair(vector<Card> *pair, const vector<Card> &allYaku){
-    for(int i=0;i<allYaku.size();i++){
-        if( allYaku[i].isPair() ){
-            pair->push_back( allYaku[i] );
-        }
-    }
-}
-
-void pickTanki(vector<Card> *tanki, const vector<Card> &allYaku){
-    for(int i=0;i<allYaku.size();i++){
-        if( allYaku[i].isTanki() ){
-            tanki->push_back( allYaku[i] );
-        }
-    }
-}
-
-void pickLegalKaidan(vector<Card> *legalYaku, const vector<Card> &allYaku, const Table &table){
-    int i;
+Yaku::Yaku(int64 cd, int suits, int num, int rank, int rank2, int jps, int jpr){
+    mCardBit = cd;//���͂�cd�̑������͂��łɏo���オ�������̂�z�肵�Ă���
     
-    if(table.isKakumei()){//革命のとき
-        for(i=0;i<allYaku.size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( allYaku[i].isKaidan() && 
-                (allYaku[i].mNum==table.mNum && allYaku[i].mRankR<table.mRank)
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits)){
-                    legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }else{//革命ではないとき
-        for(i=0;i<allYaku.size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( (allYaku[i].isKaidan()) &&
-                 allYaku[i].mNum==table.mNum && allYaku[i].mRankL>table.mRank)
-                {
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits)){
-                    legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }
-}
-	    
-void pickLegalPair(vector<Card> *legalYaku, const vector<Card> &allYaku, const Table &table){
-    int i;
+    mSuits = suits;
+    mNum = num;
+    mRankR = rank2;//�E�[
+    mRankL = rank;  //���[
+    mJposSuit = jps;
+    mJposRank = jpr;
     
-    if(table.isKakumei()){//革命のとき
-        for(i=0;i<allYaku.size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( allYaku[i].isPair() && 
-               allYaku[i].mNum==table.mNum && allYaku[i].mRankL<table.mRank
-               ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits)){
-                    legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }else{//革命ではないとき
-        for(i=0;i<allYaku.size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( (allYaku[i].isPair()) && 
-                allYaku[i].mNum==table.mNum && allYaku[i].mRankR>table.mRank
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits)){
-                    legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }
-}
-	   
-void pickLegalTanki(vector<Card> *legalYaku, const vector<Card> &allYaku, const Table &table){
-    int i;
+    bzero(mCards, sizeof(mCards));
+    setBitTo815( mCards );//815�z��ɂ��i�[����
+    /*
+    mKaidan=isKaidan();
+    mPair=isPair();
+    mTanki=isTanki();
+    mPass=isPass();
+    mJoker=isJTanki();
     
-    if(table.isJTanki()){//ジョーカー単騎はスペ３しか考えられない
-        for(i=0; i < allYaku.size(); i++){
-            if(allYaku[i].isSpade3()==1){
-                legalYaku->push_back( allYaku[i] );
-                break;
-            }
-        }
-    }
-    else if(table.isKakumei()){//革命のとき
-        for(i=0; i < allYaku.size(); i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if(allYaku[i].mNum==1 && allYaku[i].mRankL<table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits || allYaku[i].isJTanki() )){
-                    legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }
-    else{//革命ではないとき
-        for(i=0; i < allYaku.size(); i++){
-            //階段で枚数が同じでかつ右側の強さが場札の強さより大きい
-            if(allYaku[i].mNum==1 && allYaku[i].mRankR>table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==allYaku[i].mSuits || allYaku[i].isJTanki() )){
-                   legalYaku->push_back( allYaku[i] );
-                }
-            }
-        }
-    }
-}
-	    
-void pickAllLegalYaku(vector<Card> *legalYaku, const vector<Card> &allYaku, const Table &table){
-    //自分の手札から構成できる全合法手のうち
-    //現在の場の状況において、（table）
-    //出せる手役のみをピックアップする
-    if(table.isOnset()){
-    	//パスだけ除外する（空場ではパスはすべきでないと信じている）
-    	for(int i=0;i<allYaku.size()-1;i++){
-    		legalYaku->push_back( allYaku[i] );
-    	}
-    }else{//各々の場に対して
-    	if(table.isTanki()){
-    		pickLegalTanki(legalYaku, allYaku, table);
-    	}
-    	else if(table.isPair()){
-    		pickLegalPair(legalYaku, allYaku, table);
-    	}
-    	else if(table.isKaidan()){
-    		pickLegalKaidan(legalYaku, allYaku, table);
-    	}
-    }
+    //����p
+    mKakumei=isKakumei();
+    m8giri=is8giri();
+    */
 }
 
-void makeKaidanFrom815(vector<Card> *yaku, const int hands[8][15]){
-    //handsから作ることの可能な階段役をyakuに入れる
-	//記述が品雑になるので場の状況は一切考えない
-	//あとで合致するものだけ取り出す
-	int joker = (hands[4][1]!=0);
-	
-	int suit, rank;
-	for(suit=0; suit<4; suit++){//スートごと一列ずつ見る
-		for(rank=0; rank<13;rank++){//始点を決定する（あり得るのは[12-13-14]マデ）
-			int length = 0;         //伸びる長さ（役の枚数）
-			int joker_flag = joker; //jokerは使えるか。
-			int searching = 1;      //探索中
-			while(searching==1){
-				if(rank+length<15 && hands[suit][rank+length]==1){//カードがあるなら
-					length++;
-				}else if(joker_flag==1){//なくてもジョーカーが使えるなら
-					length++;
-					joker_flag = 0;
-				}else{//作れない場合はおしまい
-					searching = 0;
-				}
-				if(searching==1 && length>=3){//階段が作れる
-					int64 hd = IS_KAIDAN;
-				    hd |= (length<6) ? IS_NUM(length) : IS_NUM(6);//6?枚まではビットが使える
-					int i, JposSuit=-1, JposRank=-1;
-					int bitSuit = 0;  bitSuit|=(1<<suit);
-					for(i=rank;i<rank+length;i++){
-						if(hands[suit][i]==1){//1なるは1~13なり
-							hd |= CARDBIT(suit, i);
-						}else{//なければjokerを使う
-			                hd |= IS_JUSED;
-							JposSuit = suit;JposRank = i;
-						}
-					}
-				    
-				    if( rank<=6 && 6<=rank+length-1 )hd|=IS_8GIRI;//8切り扱いになる
-					Card cd(hd, bitSuit, length, rank, rank+length-1, JposSuit, JposRank);
-					yaku->push_back(cd);
-					if(joker_flag==1){//jokerを使わずに来ていれば、jokerに置き換えた階段も作ることができる
-						for(i=rank;i<rank+length;i++){
-							int64 mask = ~CARDBIT(suit, i);//joker使うとこだけ0
-						    int64 hdj = (mask&hd)|IS_JUSED;//残すものは残す
-							JposSuit=suit, JposRank=i;//jokerポジションは別変数のため全体を変える必要はない（のか？）
-							Card cd(hdj, suit, length, rank, rank+length-1, JposSuit, JposRank);
-							yaku->push_back(cd);
-					    }
-					}
-				}
-			}//while(searching)
-		}//for(order
-	}//for(suit
+bool Yaku::isKaidan() const{
+    return (mCardBit&(IS_KAIDAN))!=0;
+}
+bool Yaku::isPair() const{
+    return (mCardBit&(IS_PAIR))!=0;
+}
+bool Yaku::isTanki() const{
+    return mNum==1;
+}
+bool Yaku::isJUsed() const{
+    return ( (mCardBit&IS_JUSED)!=0 );//joker�������Ă���
+}
+bool Yaku::isJTanki() const{
+    //return ( (mCardBit&IS_JUSED)!=0 && (mCardBit&IS_NUM(1))!=0);//���������Ă���
+    return ( (mCardBit&IS_JUSED)!=0 && (mCardBit&IS_TANKI)!=0);//���������Ă���
+}
+bool Yaku::isKakumei() const{
+    if(isKaidan() && mNum>=5 || isPair() && mNum>=4)return 1;
+    else return 0;
 }
 
-void makePairFrom815(vector<Card> *yaku, const int hands[8][15]){
-	//記述が品雑になるので場の状況は一切考えない
-	//あとで合致するものだけ取り出す
-	
-	#define PATTERN_NUM 11
-	int PATTERN[PATTERN_NUM][4] = {
-		{1,1,0,0},{1,0,1,0},{1,0,0,1},{0,1,1,0},{0,1,0,1},{0,0,1,1},//6個は2枚
-		{1,1,1,0},{1,1,0,1},{1,0,1,1},{0,1,1,1},                    //4個は3枚
-		{1,1,1,1}                                                   //1個は4枚
-	};//ペアの各スートの可能性パターン
-	//これに合致するように探していく
-	
-	int suit, rank, pat;
-    int joker = (hands[4][1]!=0);
-	for(rank=1;rank<=13;rank++){//各ランクについてみていく
-		for(pat=0;pat<PATTERN_NUM; pat++){
-			int num = 0, match = 0, unmatch = 0;
-			for(suit=0;suit<4;suit++){//スートを調べていく
-				if(PATTERN[pat][suit]==1){//当該のパターンについて
-					num++;//枚数
-					if(hands[suit][rank]==1){//手札から出せる
-						match++;
-					}else{//出せない
-						unmatch++;
-					}
-				}
-			}//for(suit
-			if(num == match){//jokerを使わずに作ることができる
-				int64 hd = IS_PAIR;
-				int bitSuit = 0;
-				for(suit=0;suit<4;suit++){
-					if(PATTERN[pat][suit]==1){
-						hd |= CARDBIT(suit, rank)|IS_NUM(num);
-						bitSuit |= (1<<suit);
-					}
-				}
-			    if(rank==6)hd|=IS_8GIRI;//8切り
-				Card cd(hd, bitSuit, num, rank, rank, -1, -1);
-				yaku->push_back(cd);
-				if(joker==1){//jokerに置き換えたバージョンを（8で使うくらいしか利点がわからない）
-				    hd |= 0ull;
-					for(suit=0;suit<4;suit++){//jokerに置き換えるスート
-						if(PATTERN[pat][suit]==1){
-						    int64 mask = ~CARDBIT(suit, rank);//ジョーカーを使うところだけ0
-						    int64 hdj = (mask&hd)|IS_JUSED|IS_NUM(num);
-							int JposSuit=suit, JposRank=rank;//jokerの位置
-							Card cd(hdj, bitSuit, num, rank, rank, JposSuit, JposRank);
-				            yaku->push_back(cd);
-						}
-					}
-				}
-			}else if(joker==1 && unmatch==1){//jokerを使えて、足りないのが1枚だけなら
-				int64 hd = IS_PAIR|IS_JUSED|IS_NUM(num);
-				int bitSuit = 0;
-				int JposSuit=-1, JposRank=-1;
-				for(suit=0;suit<4;suit++){
-					if(PATTERN[pat][suit]==1){
-					    bitSuit |= (1<<suit);
-						if(hands[suit][rank] == 1){
-							hd |= CARDBIT(suit, rank);
-						}else{
-							JposSuit=suit, JposRank=rank;
-						}
-					}
-				}
-				Card cd(hd, bitSuit, num, rank, rank, JposSuit, JposRank);
-				yaku->push_back(cd);
-			}
-		}
-		
-		//最後に5カード
-		if(hands[0][rank] && hands[1][rank] && hands[2][rank] && hands[3][rank] && joker){//全部出せる
-		    int64 hd = IS_PAIR|IS_JUSED|IS_NUM(5);
-		    int JposSuit=4, JposRank=rank;
-			hd|=CARDBIT(0, rank);hd|=CARDBIT(1, rank);hd|=CARDBIT(2, rank);hd|=CARDBIT(3, rank);
-			Card cd(hd, 15, 5, rank, rank, JposSuit, JposRank);
-			yaku->push_back(cd);
-		}
-	}//for(rank
-}
-
-void makeTankiFrom815(vector<Card> *yaku, const int hands[8][15]){
-    //815配列から単騎役を作る
-    int suit, rank;
-    int joker = (hands[4][1]!=0);//jokerを持っている
-	
-	for(suit=0;suit<4;suit++){
-		for(rank=1;rank<=13;rank++){
-			if(hands[suit][rank]==1){
-			    int bitSuit = (1<<suit);
-			    int64 hd = CARDBIT(suit, rank)|IS_NUM(1);
-				Card cd(hd, bitSuit, 1, rank, rank, -1, -1);
-			    yaku->push_back(cd);
-			}
-		}
-	}
-	
-	//joker単騎だしの検討
-	if(joker){
-	    int64 hd = IS_JUSED|IS_NUM(1);
-		Card cd(hd, 0, 1, 0, 14, 0, 14);
-	    yaku->push_back(cd);
-	}
-}
-
-void printCardVec(const vector<Card> &vecCards){
-    for(int i=0;i<vecCards.size();i++){
-        cout << i << endl;
-        vecCards[i].printBit();
-        cout << endl;
-    }
-}
-void makePass(vector<Card> *yaku){
-    //役集合にパスを入れる
-	int64 hd = IS_PASS;
-	Card cd(hd, 0, 0, 0, 0, -1, -1);
-	yaku->push_back(cd);
-}
-
-void sortYakuByRank( vector<Card> *vecCards, bool isKakumei ){
-    //弱い順に並び替える
-    if( isKakumei ){//革命のとき
-        sort( vecCards->begin(), vecCards->end(), isCard1WeakerThanCard2WhenKakumei );
+bool Yaku::is8giri() const{
+    /*
+    return (mCardBit&(IS_8GIRI))!=0;
+    */
+    if( mRankL <= 6 && 6 <= mRankR && !isJTanki() ){
+        return true;
     }else{
-        sort( vecCards->begin(), vecCards->end(), isCard1WeakerThanCard2WhenNotKakumei );
+        return false;
     }
 }
-	    
-
-void makeYakuBFrom815(vector<Card> *tky, int hands[8][15], const Table &table){
-    
-    if(table.isOnset()){//空場
-        makeKaidanFrom815(tky, hands);
-        //std::cout << "kaidan" << tky->size() << std::endl;
-        makePairFrom815(tky, hands);
-        //std::cout << "pair" << tky->size() << std::endl;
-        makeTankiFrom815(tky, hands);
-        //std::cout << "tanki" << tky->size() << std::endl;
-        //printVCard(tky);
+bool Yaku::isSpade3() const{
+    /*
+    return (mCardBit&(IS_SPADE3))!=0;
+    */
+    if( mNum==1 && mRankR==1 && mRankL==1 && mSuits==1){
+        return true;
     }else{
-        if(table.isKaidan()){
-            vector<Card> atky;
-            makeKaidanFrom815(&atky, hands);
-            //std::cout << "ak" << atky.size() << std::endl;
-            //printVCard(&atky);
-            sortKaidan(tky, &atky, table);
-            //std::cout << "bk" << tky->size() << std::endl;
-            //printVCard(tky);
-        }else if(table.isPair()){
-            vector<Card> atky;
-            makePairFrom815(&atky, hands);
-            //std::cout << "ap" << atky.size() << std::endl;
-            //printVCard(&atky);
-            sortPair(tky, &atky, table);
-            //std::cout << "bp" << tky->size() << std::endl;
-            //printVCard(tky);
-        }else if(table.isTanki()){
-            vector<Card> atky;
-            makeTankiFrom815(&atky, hands);
-            //printVCard(&atky);
-            //std::cout << "at" << atky.size() << std::endl;
-            sortTanki(tky, &atky, table);
-            //std::cout << "bt" << tky->size() << std::endl;
-            //printVCard(tky);
+        return false;
+    }
+    
+}
+bool Yaku::isPass() const{
+    return (mNum==0) ? 1 : 0;
+}
+int64 Yaku::getCardBit() const{
+    return mCardBit;
+}
+
+void Yaku::setSuit(int s){
+    mSuits |= BITull(s);
+}
+
+
+void Yaku::setTanki(){
+    mCardBit |= IS_TANKI;
+}
+
+void Yaku::setPair(){
+    mCardBit |= IS_PAIR;
+}
+
+void Yaku::setKaidan(){
+    mCardBit |= IS_KAIDAN;
+}
+void Yaku::setJTanki(){
+    mCardBit |= (IS_JUSED | IS_TANKI);
+}
+
+void Yaku::clear(){
+    mCardBit = 0ull;
+    mSuits = 0;
+    mSpe3 = false;
+    mNum = 0;
+    mRankR = 0;
+    mRankL = 0;
+    mJposSuit = -1;
+    mJposRank = -1;
+}
+    
+void Yaku::init(){
+    clear();
+    mNum=0;mRankR=0;mRankL=0;
+}
+
+void Yaku::demoPass(){
+    clear();
+    mCardBit = IS_PASS;
+    bzero(mCards, sizeof(mCards));
+    setBitTo815( mCards );//815�z��ɂ��i�[����
+}
+    
+void Yaku::setBitTo815(int dest[8][15]) const{
+    int i,j;
+    for(i=0;i<4;i++){
+        for(j=1;j<=13;j++){
+            //if(mCardBit&BITull(i*13+(j-1))){
+            if(mCardBit&CARDBIT(i, j)){
+                dest[i][j]=1;
+            }else{
+                dest[i][j]=0;
+            }
+        }
+    }
+    if(mJposSuit>=0 && mJposRank>=0){
+        dest[mJposSuit][mJposRank]=2;
+    }
+}
+
+void Yaku::printBit() const{
+    int temp[8][15]={{0}};
+    std::cout << "kdn" << isKaidan() << ", pir" <<isPair() 
+    << /*", jok" << isJoker() << */ ", kkm" << isKakumei()
+    << /*", sbr" << isShibari() <<*/ ", 8g" << is8giri() 
+    << ", num" << mNum << ", rktT" << mRankR << ", rkr" << mRankL 
+    << ", suit" << mSuits << std::endl;
+    cout << "pass" << isPass() << endl;
+    cout << "isSpade3" << isSpade3() << endl;
+    cout << "jr"<<mJposRank<<" " <<mJposSuit<<" "<<isJUsed()<<endl;
+    cout << "a" << endl;
+    setBitTo815(temp);
+    cout << "b" << endl;
+    //print515(temp);
+    cout << "c" << endl;
+}
+
+void Yaku::printBit2() const{
+    for(int i=0;i<4;i++){
+        for(int j=1;j<=13;j++){
+            if( mCardBit&BITull(i*13+(j-1)) ){
+                std::cout << "1 ";
+            }else{
+                std::cout << "0 ";
+            }
+        }
+        std::cout << std::endl;
+    }
+    /*
+    std::cout << "S3" << isSpade3() << " JT" << isJTanki() << " KA" << isKaidan()
+    << " PA" << isPair() << " PA" << isPass() << " 8G" << is8giri() << std::endl;
+    for(int i=0;i<5;i++){
+        std::cout << "N" << i << " " << ((mCardBit&IS_NUM(i))!=0) << ",";
+    }
+    std::cout << "N" << 5 << " " << ((mCardBit&IS_NUM(5))!=0) << std::endl;
+    */
+}
+
+void Yaku::printBit3() const{
+    std::string SUIT="SHDC";
+    std::string RANK="-34567890JQKA2";
+    for(int j=1;j<=13;j++){
+        for(int i=0;i<4;i++){
+            if( i==mJposSuit && j==mJposRank ){
+                std::cout << SUIT[i] << RANK[j] << "*";
+            }else if( (mCardBit&BITull(i*13+(j-1)))!=0 ){
+                std::cout << SUIT[i] << RANK[j];
+            }
+        }
+    }
+}
+
+void Yaku::set815ToBit(int src[8][15]){
+
+    int i, j;
+    mCardBit = 0ULL;
+    for(i=0;i<4;i++){
+        //joker�̈ʒu
+        if(src[i][0]==2){
+            mJposSuit = i;
+            mJposRank = 0;
+        }
+        if(src[i][14]==2){
+            mJposSuit = i;
+            mJposRank = 14;
+        }
+        //�ʏ�J�[�h�̈ʒu
+        for(j=1;j<=13;j++){
+            if(src[i][j]==0){
+            }else if(src[i][j]==1){
+                //mCardBit |= BITull(i*13 + (j-1));
+                mCardBit |= CARDBIT(i, j);
+            }else if(src[i][j]==2){
+                mJposSuit = i;
+                mJposRank = j;
+            }
+        }
+    }
+    //joker�̈ʒu
+    for(j=0;j<=14;j++){
+        if(src[4][j]==2){
+            mJposSuit = 4;
+            mJposRank = j;
+        }
+    }
+    
+}
+
+void Yaku::set815ToYaku(int src[8][15]){
+    //��o�����{���ɒ�o�\���ǂ������m�F���Ayaku�ɕϊ�����
+    clear();
+    /*
+    if(countCard(data)==0){
+        //�p�X����������Ă���
+        yaku->demoPass();
+        return;
+    }
+    */
+    int cards_num = 0, joker_num = 0;
+    vector<int> suit, rank, fake;//�������ꂽ�J�[�h������Ă���
+    for(int i=0; i<5; i++){
+        for(int j=0; j<15; j++){
+            if(src[i][j]==0){//��o����Ă��Ȃ�
+                
+            }else if(src[i][j]==1){//�ʏ�̃J�[�h����o���ꂽ
+                suit.push_back(i);
+                rank.push_back(j);
+                fake.push_back(0);
+                cards_num++;
+            }else if(src[i][j]==2){//joker����o���ꂽ
+                suit.push_back(i);
+                rank.push_back(j);
+                fake.push_back(1);
+                cards_num++;
+                joker_num++;
+            }
+        }
+    }
+    if(cards_num==0){//�����Ȃ�
+        demoPass();
+        return;
+    }
+    /*
+    for(int i=0;i<cards_num; i++){
+        cout << suit[i] << " " << rank[i] << endl;
+    }
+    */
+    //�ǂ̃^�C�v�̉\�������邩�H
+    bool tanki_flag=true, kaidan_flag=true, pair_flag=true;
+    if(cards_num==1){
+        tanki_flag=true;
+        kaidan_flag=false;
+        pair_flag=false;
+    }else{
+        tanki_flag=false;
+        for(int i=0; i<cards_num-1; i++){
+            //1�ӏ��ł���O�������false�ƂȂ�
+            if(suit[i]!=suit[i+1]){//suit���قȂ�
+                kaidan_flag=false;
+            }
+            if(rank[i]!=rank[i+1]){//rank���قȂ�
+                pair_flag=false;
+            }
+        }
+    }
+    
+    if(tanki_flag){//����͒P�R�ł���
+        //cout<<"tanki"<<endl;
+        set815ToBit( src );
+        mNum = cards_num;
+        if(joker_num == 1){//joker�P�R
+            mRankR = 14;
+            mRankL = 0;
+            //yaku->setSuit(0);
+            mJposSuit = 0;
+            mJposRank = 14;
+            setJTanki();
             
+        }else{
+            mRankR = rank[0];
+            mRankL = rank[0];
+            setSuit(suit[0]);
         }
-        //printVCard(tky);
-        makePass(tky);
+        setTanki();
+    }else if(pair_flag){//����̓y�A�ł���
+        //cout<<"pair"<<endl;
+        set815ToBit( src );
+        mNum = cards_num;
+        mRankR = rank[0];
+        mRankL = rank[0];
+        for(int i=0; i<suit.size(); i++){
+            setSuit(suit[i]);
+        }
+        for(int i=0; i<suit.size(); i++){//joker�̈ʒu��ۑ�
+            if(fake[i]){
+                mJposSuit = suit[i];
+                mJposRank = rank[i];
+            }
+        }
+        setPair();
+    }else if(kaidan_flag){//����͊K�i�ł���
+        //cout<<"kaidan"<<endl;
+        set815ToBit( src );
+        mNum = cards_num;
+        mRankL = rank[0];//�ŏ��Ɍ�������̂��n�_�Ɍ��܂��Ă���
+        mRankR = rank[0]+cards_num-1;
+        setSuit(suit[0]);
+        for(int i=0; i<suit.size(); i++){//joker�̈ʒu��ۑ�
+            if(fake[i]){
+                mJposSuit = suit[i];
+                mJposRank = rank[i];
+            }
+        }
+        setKaidan();
     }
-}	    
-void sortAllYaku(vector<Card> *tky, const vector<Card> *atky, const Table &table){
+    //print();
+}
+
+void Yaku::setBit(int src[8][15]){
+    //bit�ɖ��ߍ���53����
+    mCardBit = 0ULL;
+    mSuits = 0;
+    set815ToBit(src);//card��bit�ɓ��ꍞ�ށB
     
-    if(table.isOnset()){
-    	//パスだけ除外する
-    	for(int i=0;i<atky->size()-1;i++){
-    		tky->push_back( (*atky)[i] );
-    	}
+    int i=0,j=0,count=0;
+    //�J�[�h�̂���ʒu��T��
+    while(j<15&&src[i][j]==0){
+	    i++;
+		if(i==4){
+    		j++;
+	    	i=0;
+	    }
+    }
+    
+    int joker_flag=0;
+    if(src[i][j] == 2) joker_flag = 1;
+    //�K�i���ۂ�
+    if(j<14 && src[i][j+1]>0){
+    	mCardBit |= IS_KAIDAN;
+    }
+    //�����𐔂��� �܂������𒲂ׂ�
+   	if( isKaidan() ){
+   		//�K�i
+	    while(j+count<15 && src[i][j+count]>0){
+		    if(j+count==6)  mCardBit |= IS_8GIRI;
+		    count++;
+	    }
+   	    mRankR = j+count-1;
+        mRankL = j;
+	    mSuits = (1<<i);
     }else{
-    	if(table.isTanki()){
-    		sortTanki(tky, atky, table);
-    	}
-    	else if(table.isPair()){
-    		sortPair(tky, atky, table);
-    	}
-    	else if(table.isKaidan()){
-    		sortKaidan(tky, atky, table);
-    	}
-    }
-	
+   		//�����g
+        for(;i<5;i++){
+    		if(src[i][j]>0){
+	    		count++;
+		    	mSuits |= (1<<i);
+		    }
+	    }
+   		if(count==1&&joker_flag==1){//joker�P�R
+    		mRankR = 14;
+    		mRankL = 0;
+   		}else{
+    		mRankR = j;
+    		mRankL = j;
+	    }
+	    if(count>1){//������
+	        mCardBit |= IS_PAIR;
+	        //if(count>=4)mCardBit |= IS_KAKUMEI;
+	    }else if(count==1){//�P�R�o���t���O�͂Ȃ�
+	        
+	    }
+	    if(j==6){//8�؂�
+	        mCardBit |= IS_8GIRI;
+	    }
+   	}
+    mNum = count;
+    //mCardBit |= (count<7) ? IS_NUM(count) : IS_NUM(7);//6���܂ł̓r�b�g���g����
+}
+Yaku::Yaku(){
+    clear();
 }
 
-void sortKaidan(vector<Card> *tky, const vector<Card> *atky, const Table &table){
-    if(table.isKakumei()){//革命のとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( (*atky)[i].isKaidan() && 
-                ((*atky)[i].mNum==table.mNum && (*atky)[i].mRankR<table.mRank)
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
-        }
-    }else{//革命ではないとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isKaidan()) &&
-                 (*atky)[i].mNum==table.mNum && (*atky)[i].mRankL>table.mRank)
-                {
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
-        }
-    }
-}
-
-void sortPair(vector<Card> *tky, const vector<Card> *atky, const Table &table){
-    if(table.isKakumei()){//革命のとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isPair()) && 
-               (*atky)[i].mNum==table.mNum && (*atky)[i].mRankL<table.mRank
-               ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
-        }
-    }else{//革命ではないとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isPair()) && 
-                (*atky)[i].mNum==table.mNum && (*atky)[i].mRankR>table.mRank
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
+void removeLap(vector<Yaku> *vecCard, int64 cdBit){
+    //���W������Card���Ƃ菜��
+    int i = 0;
+    int64 mask = BITull(53)-1;//�J�[�h�̂Ԃ񂾂��i�J�[�h�̍����܂ł͌��Ȃ��j
+    while( i < (*vecCard).size() ){//�J�[�h�W���̒���T�����Ă���
+    	if( ( mask & (*vecCard)[i].getCardBit() & cdBit ) == 0 ){//bit�����Ԃ�Ȃ�
+            i++;//����_��i�߂�
+        }else{//�����
+            (*vecCard).erase( (*vecCard).begin() + i);//�W�������菜��
         }
     }
 }
 
-void sortTanki(vector<Card> *tky, const vector<Card> *atky, const Table &table){
-    
-    if(table.isJTanki()){//ジョーカー単騎はスペ３しか考えられない
-        for(int i=0;i<atky->size();i++){
-            if((*atky)[i].isSpade3()==1){//スぺ3を持っている
-                tky->push_back((*atky)[i]);
-                break;
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
+void removeYaku(vector<Yaku> *vecCard, Yaku &yaku){
+    //���W������yaku���Ƃ菜��
+    int i = 0;
+    vector<Yaku> test;
+    while( i < (*vecCard).size() ){//�J�[�h�W���̒���T�����Ă���
+    	if( (*vecCard)[i].mNum==yaku.mNum && (*vecCard)[i].mRankL==yaku.mRankL &&
+            (*vecCard)[i].mRankR==yaku.mRankR && (*vecCard)[i].mSuits==yaku.mSuits &&
+            (*vecCard)[i].mJposSuit==yaku.mJposSuit && (*vecCard)[i].mJposRank==yaku.mJposRank 
+        ){//����
+            test.push_back((*vecCard)[i]);
+            (*vecCard).erase( (*vecCard).begin() + i);//�W�������菜��
+        }else{//�����
+            i++;//����_��i�߂�
         }
     }
-    else if(table.isKakumei()){//革命のとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if((*atky)[i].mNum==1 && (*atky)[i].mRankL<table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits || (*atky)[i].isJTanki() )){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
-        }
+    if( test.size() > 1){
+        cout<<"hen!"<< endl;
+        yaku.print();
+cout << yaku.mNum << " " << yaku.mRankL << " " << yaku.mRankR << " " << yaku.mSuits << endl;
+cout << endl;
+        for(int j=0; j<test.size(); j++){
+            test[j].print();
+    cout<<endl;        
+}
+    exit(1);
+    }else if(test.size()==0){
+cout<<"yapparihen"<<endl;
+yaku.print();
+cout << yaku.mNum << " " << yaku.mRankL << " " << yaku.mRankR << " " << yaku.mSuits << " " << yaku.mJposSuit << " " << yaku.mJposRank << endl;
+cout<<"----"<<endl;
+for(int j=0;j<(*vecCard).size();j++){
+    (*vecCard)[j].print();
+cout << (*vecCard)[j].mNum << " " << (*vecCard)[j].mRankL << " " << (*vecCard)[j].mRankR << " " << (*vecCard)[j].mSuits << " " << (*vecCard)[j].mJposSuit << " " << (*vecCard)[j].mJposRank << endl;cout<<endl;
+}
+exit(1);
     }
-    else{//革命ではないとき
-        for(int i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if((*atky)[i].mNum==1 && (*atky)[i].mRankR>table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits || (*atky)[i].isJTanki() )){
-                    tky->push_back((*atky)[i]);
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                tky->push_back((*atky)[i]);
-            }
+}
+
+void removePass(vector<Yaku> *vecCard){
+    //���W������Pass���Ƃ菜��
+    int i = 0;
+    while( i < (*vecCard).size() ){//�J�[�h�W���̒���T�����Ă���
+        if( (*vecCard)[i].isPass() == true ){
+            (*vecCard).erase( (*vecCard).begin() + i);//�W�������菜��
+        }else{
+            i++;
         }
     }
 }
+
+bool isCard1WeakerThanCard2WhenNotKakumei(const Yaku &c1, const Yaku &c2){
+    //�ʏ펞�i�v���łȂ��j�Ƃ��A��1��������2���������������Ƃ�1��Ԃ�
+    return ( c1.mRankL < c2.mRankL);
+}
+
+bool isCard1WeakerThanCard2WhenKakumei(const Yaku &c1, const Yaku &c2){
+    //�v���̂Ƃ��A��1��������2���������������Ƃ�1��Ԃ�
+    return ( c1.mRankR > c2.mRankR);
+}
+
 /*
-void sortKaidan2(vector<int> *parallel, const vector<Card> *atky, const Table &table){
-    int i;
-    
-    if(table.isKakumei()){//革命のとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( (*atky)[i].isKaidan() && 
-                ((*atky)[i].mNum==table.mNum && (*atky)[i].mRankR<table.mRank)
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
-    }else{//革命ではないとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isKaidan()) &&
-                 (*atky)[i].mNum==table.mNum && (*atky)[i].mRankL>table.mRank)
-                {
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
+int selectBigCards(Yaku *card, const std::vector<Yaku> &vecCard){
+    if(vecCard.size()==0){
+        cout << "naka nai" << endl;
+        exit(1);
+    }else if(vecCard.size()==1){
+        *card = vecCard[0];
+        return 0;
+    }
+    int index = 0;
+    int maxNum = vecCard[0].mNum;
+    for(int i=1;i<vecCard.size();i++){
+        if( vecCard[i].mNum > maxNum ){
+            maxNum = vecCard[i].mNum;
+            index = i;
         }
     }
-}
-	    
-void sortPair2(vector<int> *parallel, const vector<Card> *atky, const Table &table){
-    int i;
-    
-    if(table.isKakumei()){//革命のとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isPair()) && 
-               (*atky)[i].mNum==table.mNum && (*atky)[i].mRankL<table.mRank
-               ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
-    }else{//革命ではないとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if( ((*atky)[i].isPair()) && 
-                (*atky)[i].mNum==table.mNum && (*atky)[i].mRankR>table.mRank
-                ){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits)){
-                    parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
+    if(index >= 0){
+        //cout<<"yyyy "<<index<<" "<<vecCard.size()<<endl;
+        //vecCard[index].printBit();
+        *card = vecCard[index];
+        return index;
+    }else{
+        std::cout << "selectBigCards" << vecCard.size() << std::endl;
+        exit(1);
     }
-}
-	   
-void sortTanki2(vector<int> *parallel, const vector<Card> *atky, const Table &table){
-    int i;
-    
-    if(table.isJTanki()){//ジョーカー単騎はスペ３しか考えられない
-        for(i=0;i<atky->size();i++){
-            if((*atky)[i].isJTanki()==1){
-                parallel->push_back( i );
-                break;
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
-    }
-    else if(table.isKakumei()){//革命のとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if((*atky)[i].mNum==1 && (*atky)[i].mRankL<table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits || (*atky)[i].isJTanki() )){
-                    parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
-    }
-    else{//革命ではないとき
-        for(i=0;i<atky->size();i++){
-            //階段で枚数が同じでかつ左側の強さが場札の強さより大きい
-            if((*atky)[i].mNum==1 && (*atky)[i].mRankR>table.mRank){
-                if( !table.isShibari() || (table.isShibari() && table.mSuits==(*atky)[i].mSuits || (*atky)[i].isJTanki() )){
-                   parallel->push_back( i );
-                }
-            }else if((*atky)[i].mNum==0){//パスは残す
-                parallel->push_back( i );
-            }
-        }
-    }
-}
-	    
-void sortAllYaku2(vector<int> *parallel, const vector<Card> *atky, const Table &table){
-    //自分の手札から構成できる全合法手のうち（atky, 改名予定）
-    //現在の場の状況において、（table）
-    //出せる手役のみをピックアップする（parallel, 改名予定）
-    if(table.isOnset()){
-    	//パスだけ除外する（空場ではパスはすべきでないと信じている）
-    	for(int i=0;i<atky->size()-1;i++){
-    		parallel->push_back( i );
-    	}
-    }else{//各々の場に対して
-    	if(table.isTanki()){
-    		sortTanki2(parallel, atky, table);
-    	}
-    	else if(table.isPair()){
-    		sortPair2(parallel, atky, table);
-    	}
-    	else if(table.isKaidan()){
-    		sortKaidan2(parallel, atky, table);
-    	}
-    }
-    
 }
 */
+
+void Yaku::print() const{
+    string suit = "SHDC ";
+    int cards[8][15] = {{0}};
+    //cout << " gg" << endl;
+    setBitTo815( cards );
+    //print815( cards );
+    //cout << " bb " << endl;
+    
+    for(int j=0; j<=5; j++){
+        for(int k=0; k<=14; k++){
+            if(cards[j][k]==1){
+                cout << suit[j] << k;
+            }else if(cards[j][k]==2){
+                cout << "J";
+            }
+        }
+    }
+    cout<<endl;
+    //cout << mNum << " " << mRankL << " " << mRankR << " " << mSuits << endl;
+}
+
+string Yaku::getStr(){
+    
+    string suit = "SHDCshdc ";
+    string rank = "B3456789XJQKA2U";
+    
+    int cards[8][15] = {{0}};
+    setBitTo815( cards );
+    string str="";
+    
+    if( isJTanki() ){
+        str+="JR";
+    }else if( isPass() ){
+        str+="PS";
+    }else{
+        for(int j=0; j<=5; j++){
+            for(int k=0; k<=14; k++){
+                ostringstream stream;
+                stream << k;
+                if(cards[j][k]==1){
+                    str += suit[j];
+                    str += rank[k];
+                    //str += stream.str();
+                }else if(cards[j][k]==2){
+                    str += suit[j+4];
+                    str += rank[k];
+                    //str += stream.str();
+                }
+            }
+        }
+    }
+    
+    return str;
+    //cout<<endl;
+    //cout << mNum << " " << mRankL << " " << mRankR << " " << mSuits << endl;
+}

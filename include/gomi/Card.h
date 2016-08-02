@@ -4,6 +4,7 @@
 #include <iostream>
 #include <vector>
 #include "common.h"
+#include "bit.h"
 
 /*
 cardBit‚Ì’†gAdefine‚Ícommon.h‚É‚ ‚é

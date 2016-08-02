@@ -1,12 +1,14 @@
-#ifndef TABLE_DEFINE
-#define TABLE_DEFINE
+#ifndef DEFINE_TABLE
+#define DEFINE_TABLE
 
-#include "Card.h"
-#include "Players.h"
+using namespace std;
+
+#include "Yaku.h"
+#include "Player.h"
 
 class Table{
 private:
-    uint32_t baBit;//場の情報は32bit
+    int64 baBit;//場の情報は32bit
 	//右から
     // 0:空場
 	// 1:階段
@@ -24,6 +26,8 @@ public:
     bool isKakumei() const;
     bool isShibari() const;
     bool isJTanki() const;
+    bool isChangePhase() const;
+    bool is11back() const;
     void setOnset(bool flag);//空場フラグをセットする
     void setKakumei(bool flag);//革命フラグをセットする
     void revKakumei();//革命を反転する
@@ -34,33 +38,34 @@ public:
     void setJTanki(bool flag);//ジョーカー単騎フラグをセットする
 	int whoseTurn() const;//現在のターンの人のプレイヤー番号を返す
     
+    /*
+    //ここらへんはmBafudaを参照するのでいらない
     int mNum;
-    int mRank;
-    //int mRankR;         //ランク（強さ）
-    //int mRankL;         //ランク（強さ）
+    int mRankR;         //ランク（強さ）
+    int mRankL;         //ランク（強さ）
     int mSuits;
-    Card mCard;         //場札
-    Players mPlayers;   //各プレイヤーの情報
+    */
+    
+    int player_id;//前回の出した人のID
+    int preBafuda[8][15];
+    Yaku mBafuda;         //場札
+    //Player mPlayer;   //各プレイヤーの情報
     
     Table();
     
     void firstGame(int cards[8][15]);
     void purge();
-    void setBafuda(int cards[8][15]);
+    //void setBafuda(int cards[8][15]);
     void setBaInfo(int cards[8][15]);
+
     void print() const;
     
-    bool isTurn(int player_num);
-    
-    /* 以下シミュレーション用の関数      */
-    /* 通常のtableの更新に使うことはない */
-    /* サーバ的な役割をになうのである */
-    
-    void simGoal();
-    int simPass();
-    void sim8giri(Card &cd);
-    void simSubmit(const Card &cd);
+    void print2();
+
+    //クライアント用の関数群
+    bool sameBafuda( int bafuda[8][15] );
+    void setBafuda( const Yaku &yaku );
 };
 
-
 #endif
+

@@ -1,8 +1,18 @@
 #include "Table.h"
+#include <iostream>
 
 using namespace std;
 
 Table::Table(){
+    baBit = 0ull;
+    /*
+    mNum = 0;
+    mRankR = 0;
+    mRankL = 0;
+    mSuits = 0;
+    */
+    setOnset(1);//‹óê‚ÉƒZƒbƒg
+    mBafuda.init();//ƒJ[ƒh‚Ííœ
 }
 
 bool Table::isOnset() const{
@@ -15,7 +25,8 @@ bool Table::isPair() const{
     return (baBit&(IS_BA_PAIR))!=0;//ƒyƒA‚©H
 }
 bool Table::isTanki() const{
-    return (baBit&(IS_BA_TANKI))!=0;//’P‹R‚©H
+    //return (baBit&(IS_BA_TANKI))!=0;//’P‹R‚©H
+    return mBafuda.isTanki();
 }
 bool Table::isKakumei() const{
     return (baBit&(IS_BA_KAKUMEI))!=0;//Šv–½‚©H
@@ -24,7 +35,13 @@ bool Table::isShibari() const{
     return (baBit&(IS_BA_SHIBARI))!=0;//”›‚è‚©H
 }
 bool Table::isJTanki() const{
-    return (baBit&(IS_BA_JOKER))!=0;//ƒWƒ‡[ƒJ[’P‹R‚©H
+    return mBafuda.isTanki()&&(baBit&(IS_BA_JOKER))!=0;//ƒWƒ‡[ƒJ[’P‹R‚©H
+}
+bool Table::is11back() const{
+    return (baBit&(IS_BA_11BACK))!=0;//11ƒoƒbƒN‚©H
+}
+bool Table::isChangePhase() const{
+    return (baBit&(IS_BA_CHANGE_PHASE))!=0;//ƒJ[ƒhŒğŠ·‚Ìƒ^ƒCƒ~ƒ“ƒO‚©H
 }
 void Table::setOnset(bool flag){//‹óêƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
     if(flag)    baBit |=  IS_BA_ONSET;
@@ -59,55 +76,70 @@ void Table::setJTanki(bool flag){//ƒWƒ‡[ƒJ[’P‹Rƒtƒ‰ƒO‚ğƒZƒbƒg‚·‚é
     else        baBit &= ~IS_BA_JOKER;
 }
 
+/*
 int Table::whoseTurn() const{//Œ»İ‚Ìƒ^[ƒ“‚Ìl‚ÌƒvƒŒƒCƒ„[”Ô†‚ğ•Ô‚·
     return mPlayers.turn;
 }
+*/
 
 void Table::firstGame(int cards[8][15]){//ƒQ[ƒ€‚Ì‰Šú‰»
     baBit = 0;
+    /*
     mNum = 0;
-    mRank = 0;
+    mRankR = 0;
+    mRankL = 0;
     mSuits = 0;
+    */
     setOnset(1);//‹óê‚ÉƒZƒbƒg
-    mCard.init();//ƒJ[ƒh‚Ííœ
-    mPlayers.set(cards);//ƒJ[ƒh‚Ì5s–ÚˆÈ~‚Ìî•ñ‚ÅƒZƒbƒg
+    mBafuda.init();//ƒJ[ƒh‚Ííœ
+    //mPlayers.set(cards);//ƒJ[ƒh‚Ì5s–ÚˆÈ~‚Ìî•ñ‚ÅƒZƒbƒg
 }
 
 void Table::purge(){//ê‚ğ—¬‚·i‰pŒê•\Œ»‚ª‚í‚©‚ç‚È‚©‚Á‚½j
     baBit &= (IS_BA_KAKUMEI);   //Šv–½ó‘Ô‚ÍÁ‚¦‚é‚±‚Æ‚Í‚È‚¢
     baBit |= (IS_BA_ONSET);     //‹óê‚É‚·‚é
+    /*
     mNum = 0;
-    mRank = 0;
+    mRankR = 0;
+    mRankL = 0;
     mSuits = 0;
-    mCard.clear();      //ƒJ[ƒh‚ğÁ‚·
-    mPlayers.recover(); //ƒvƒŒƒCƒ„[‚ÌƒpƒXó‘Ô‚ğ‰ğœ‚·‚é
+    */
+    mBafuda.clear();      //ƒJ[ƒh‚ğÁ‚·
+    //mPlayers.recover(); //ƒvƒŒƒCƒ„[‚ÌƒpƒXó‘Ô‚ğ‰ğœ‚·‚é
 }
-    
+
+/*
 void Table::setBafuda(int cards[8][15]){//êD‚ğ•Û‘¶iêD‚©‚ç“Ç‚İæ‚ê‚é‚à‚Ì‚¾‚¯XV‚·‚éj
-    mCard.clear();
-    mCard.setBit(cards);
+    mBafuda.clear();
+    mBafuda.setBit(cards);
     
-    if( mCard.isKakumei() ) revKakumei();//ƒJ[ƒh‚ªŠv–½‚ğ”­¶‚³‚¹‚é‚È‚çó‘Ô‚ğ”½“]‚·‚é
-    setKaidan( mCard.isKaidan() );      //ŠK’i
-    setPair( mCard.isPair() );          //ƒyƒA
+    if( mBafuda.isKakumei() ) revKakumei();//ƒJ[ƒh‚ªŠv–½‚ğ”­¶‚³‚¹‚é‚È‚çó‘Ô‚ğ”½“]‚·‚é
+    setKaidan( mBafuda.isKaidan() );      //ŠK’i
+    setPair( mBafuda.isPair() );          //ƒyƒA
     
-    mNum = mCard.mNum;                  //–‡”
+    mNum = mBafuda.mNum;                  //–‡”
     if(mNum==1){//ƒJ[ƒh–‡”            //’P‹R
         setTanki( 1 );
-        //setJoker( mCard.isJoker() );    //joker’P‹R
-        setJTanki( mCard.isJTanki() );    //joker’P‹R
+        //setJoker( mBafuda.isJoker() );    //joker’P‹R
+        setJTanki( mBafuda.isJTanki() );    //joker’P‹R
     }else if(mNum==0){//‚¨‚»‚ç‚­‚±‚±‚Í‚ß‚Á‚½‚É‚Í‚¢‚ç‚È‚¢
         setOnset( 1 );
     }
+    /*
     if( isKakumei() ){                  //‹­‚³AŠv–½‚È‚ç¶’[‚ğA’Êí‚È‚ç‰E’[‚ğ
-        mRank = mCard.mRankL;//¶’[
+        mRank = mBafuda.mRankL;//¶’[
     }else{
-        mRank = mCard.mRankR;//‰E’[
+        mRank = mBafuda.mRankR;//‰E’[
     }
     
-    mSuits = mCard.mSuits;//ƒX[ƒc
-}
+    mRankL = mBafuda.mRankL;//¶’[
+    mRankR = mBafuda.mRankR;//‰E’[
     
+    mSuits = mBafuda.mSuits;//ƒX[ƒc
+}
+*/
+    
+/*
 void Table::setBaInfo(int cards[8][15]){//•’Êó‚¯æ‚é‚Ì‚ÍèD‚Å‚ ‚èA5s–ÚˆÈ‰º‚Ìê‚Ìî•ñ‚ğXV‚·‚é
     if(cards[5][4]>0)   baBit |=  IS_BA_ONSET;  //‹óê
     else                baBit &= ~IS_BA_ONSET;
@@ -119,87 +151,81 @@ void Table::setBaInfo(int cards[8][15]){//•’Êó‚¯æ‚é‚Ì‚ÍèD‚Å‚ ‚èA5s–ÚˆÈ‰º‚
     if( isOnset() ){//ê‚ğ—¬‚·
         purge();
     }
-	mPlayers.update(cards);
+	//mPlayers.update(cards);
 }
-    
+*/
+
 void Table::print() const{
-    std::cout << "ON" << isOnset() 
+    
+    cout << "ON" << isOnset() 
      <<", KA" << isKaidan()
      <<", PA" << isPair()
      << ", TN" << isTanki() 
-     << ", NU" << mNum << ", RN" << mRank << std::endl;
-    std::cout << "KK" << isKakumei() 
+     << ", NU" << mBafuda.mNum << ", RNL" << mBafuda.mRankL<< ", RNR" << mBafuda.mRankR << endl;
+    cout << "KK" << isKakumei() 
     << ", SH"<< isShibari() 
-    << ", SS " << mSuits << std::endl;
-    std::cout << "bafuda" << std::endl;
+    << ", SS " << mBafuda.mSuits << endl;
+    //cout << "bafuda" << endl;
     //int temp[8][15]={{0}};
-    mCard.printBit2();
-    mPlayers.print();
+    //mCard.printBit2();
+    //mPlayers.print();
 }
 
-bool Table::isTurn(int player_num){
-    return whoseTurn() == player_num;
+void Table::print2(){
+    cout << "OKPTSJ|";
+    cout << isOnset() << isKaidan() << isPair() << isTanki() << isShibari() << isJTanki();
+    
 }
 
-void Table::simGoal(){
-    //Œ»İ‚Ìl‚ª‚ ‚ª‚Á‚½‚Æ‚«‚ÌXV
-    mPlayers.simGoal();
-}
-
-int Table::simPass(){
-    //Œ»İ‚Ìl‚ªƒpƒX‚µ‚½‚Æ‚«‚ÌXV
-    return mPlayers.simPass();
-}
-    
-void Table::sim8giri(Card &cd){
-    //Œ»İ‚Ìl‚ª8Ø‚è‚ğ‚µ‚½‚Æ‚«‚ÌXV
-    mPlayers.simSubmit(cd);//ƒvƒŒƒCƒ„[î•ñXV
-    purge();//ê‚ğ—¬‚·
-}
-    
-void Table::simSubmit(const Card &cd){
-    //ƒJ[ƒhcd‚ğ’ño‚µ‚½‚ÌXV
-	//cout << "submit " << endl;
-	//cd.printBit();
-    
-    if(cd.mNum==0){         //ƒpƒX‚ğ‚µ‚½
-        if(simPass()==1){   //‘Sˆõ‚É’ñoŒ ‚ª‚È‚­‚È‚é
-            purge();        //ê‚ª—¬‚ê‚é
+bool Table::sameBafuda(int bafuda[8][15]){
+    for(int i=0;i<4;i++){
+        for(int j=0;j<15;j++){
+            if( !(bafuda[i][j]==0 && (mBafuda.getCardBit()&CARDBIT(i,j))==0) || !(bafuda[i][j]!=0 && (mBafuda.getCardBit()&CARDBIT(i,j))!=0) ){
+                return false;
+            }
         }
     }
-    else{//‚È‚ñ‚ç‚©o‚µ‚½
-        
-        mPlayers.simSubmit(cd);//ƒvƒŒƒCƒ„[î•ñ‚ÌXVièD–‡”E‚ ‚ª‚èj
-        if(mCard.isKakumei())revKakumei();//Šv–½‚ğ‹N‚±‚µ‚½‚ç”½“]
-        
-        if(cd.is8giri()==1){//8Ø‚è‚¾‚Á‚½
-            purge();        //ê‚ğ—¬‚·
+    return true;
+}
+
+void Table::setBaInfo(int cards[8][15]){
+    if(cards[5][4]>0)   baBit |=  IS_BA_ONSET;  //‹óê
+    else                baBit &= ~IS_BA_ONSET;
+    if(cards[5][6]>0)   baBit |=  IS_BA_KAKUMEI;//Šv–½
+    else                baBit &= ~IS_BA_KAKUMEI;
+    if(cards[5][7]>0)   baBit |=  IS_BA_SHIBARI;//”›‚è
+    else                baBit &= ~IS_BA_SHIBARI;
+	
+    if( isOnset() ){//ê‚ğ—¬‚·
+        purge();
+    }
+	//mPlayers.update(cards);
+}
+
+void Table::setBafuda(const Yaku &yaku){
+    //mBafuda.setOnset(0);
+    if(mBafuda.mSuits==yaku.mSuits){
+        setShibari(1);
+    }else{
+        setShibari(0);
+    }
+
+    mBafuda = yaku;//êD‚ğæ‚èŠ·‚¦‚é
+    if(yaku.isKaidan()){
+        setKaidan(1);setPair(0);setTanki(0);
+    }else if(yaku.isPair()){
+        setKaidan(0);setPair(1);setTanki(0);
+    }else if(yaku.isTanki()){
+        setKaidan(0);setPair(0);setTanki(1);
+/*
+        if(yaku.isJTanki()){
+            setJTanki(1);
         }else{
-            setOnset(0);            //onset‰ğœ
-            
-            mCard = cd;     //êD‚ğ’u‚«Š·‚¦‚é
-            
-            setKaidan( mCard.isKaidan() );
-            setPair( mCard.isPair() );
-            
-            mNum = mCard.mNum;
-            if(mNum==1){//ƒJ[ƒh–‡”
-                setTanki( 1 );
-                //setJoker( mCard.isJoker() );
-                setJTanki( mCard.isJTanki() );
-            }
-            if( isKakumei() ){
-                mRank = mCard.mRankL;//¶’[
-            }else{
-                mRank = mCard.mRankR;//‰E’[
-            }
-            
-            mSuits = mCard.mSuits;//ƒX[ƒc
+            setJTanki(0);
         }
+*/
     }
-    #ifdef DEBUG
-    cout << "table after submit cd" << endl;
-	print();
-    #endif
-	//exit(1);
+    
+	//mPlayers.update(cards);
 }
+
