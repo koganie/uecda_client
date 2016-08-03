@@ -203,29 +203,24 @@ void Table::setBaInfo(int cards[8][15]){
 }
 
 void Table::setBafuda(const Yaku &yaku){
-    //mBafuda.setOnset(0);
+    //êD‚ğXV‚·‚é
     if(mBafuda.mSuits==yaku.mSuits){
         setShibari(1);
     }else{
         setShibari(0);
     }
+    if( yaku.isKakumei() ){
+        revKakumei();//”½“]
+    }
 
-    mBafuda = yaku;//êD‚ğæ‚èŠ·‚¦‚é
     if(yaku.isKaidan()){
         setKaidan(1);setPair(0);setTanki(0);
     }else if(yaku.isPair()){
         setKaidan(0);setPair(1);setTanki(0);
     }else if(yaku.isTanki()){
         setKaidan(0);setPair(0);setTanki(1);
-/*
-        if(yaku.isJTanki()){
-            setJTanki(1);
-        }else{
-            setJTanki(0);
-        }
-*/
     }
-    
-	//mPlayers.update(cards);
+
+    mBafuda = yaku;//êD‚ğæ‚èŠ·‚¦‚é
 }
 

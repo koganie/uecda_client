@@ -21,19 +21,6 @@ Yaku::Yaku(int64 cd, int suits, int num, int rank, int rank2, int jps, int jpr){
     mJposSuit = jps;
     mJposRank = jpr;
     
-    bzero(mCards, sizeof(mCards));
-    setBitTo815( mCards );//815îzóÒÇ…Ç‡äiî[Ç∑ÇÈ
-    /*
-    mKaidan=isKaidan();
-    mPair=isPair();
-    mTanki=isTanki();
-    mPass=isPass();
-    mJoker=isJTanki();
-    
-    //ïõçÏóp
-    mKakumei=isKakumei();
-    m8giri=is8giri();
-    */
 }
 
 bool Yaku::isKaidan() const{
@@ -124,8 +111,8 @@ void Yaku::init(){
 void Yaku::demoPass(){
     clear();
     mCardBit = IS_PASS;
-    bzero(mCards, sizeof(mCards));
-    setBitTo815( mCards );//815îzóÒÇ…Ç‡äiî[Ç∑ÇÈ
+    //bzero(mCards, sizeof(mCards));
+    //setBitTo815( mCards );//815îzóÒÇ…Ç‡äiî[Ç∑ÇÈ
 }
     
 void Yaku::setBitTo815(int dest[8][15]) const{

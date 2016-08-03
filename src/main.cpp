@@ -86,8 +86,8 @@ int main(int argc,char* argv[]){
                 vector<Yaku> myYaku;        //自分の手札から生成できる合法手の集合体
                 makeAllYaku(&myYaku, hands);//合法手をリストアップする
                 
-                //selectSubmitCardsByDelusion( &select_cards, table, players, myYaku, gomi, hands);//妄想による選択
-                selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
+                selectSubmitCardsByDelusion( &select_cards, table, players, myYaku, gomi, hands);//妄想による選択
+                //selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
                 select_cards.setBitTo815( cards );//815配列に成形する
                 
                 game.sendCard( cards );//サーバに提示する

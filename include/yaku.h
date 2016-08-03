@@ -10,7 +10,7 @@ using namespace std;
 class Yaku{
 private:
     int64 mCardBit;       //カードのビット表現
-    int mCards[8][15];
+    //int mCards[8][15];
     
 public:
     int mNum;           //枚数

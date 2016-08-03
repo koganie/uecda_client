@@ -62,32 +62,6 @@ int Delusion::forwardDelusion(const Yaku &cd, int *depth){
     simSubmit(cd);//提出手による更新
     
     //あがりのチェック（ターゲットの順位がわかったらその時点で点数を返す）
-    /*
-    int isGoaled = mPlayers.isGoaled, goal_num=0;
-    for(int i=0;i<5;i++)if( (isGoaled&(1<<i))!=0 )goal_num++;
-    if( (isGoaled&(1<<mTarget)) != 0 ){//ターゲットがゴールしている
-        return 6-goal_num;//最新のgoal_num番目にあがった。最高位が5点となる
-    }else if( goal_num==4 ){//他の4人があがった
-        return 1;//ぺけ
-    }
-    */
-    /*
-    int agari_num = 0;
-    for(int i=0; i<mPlayers.agari.size(); i++){
-        if( mPlayers.agari[i] == mTarget ){
-            return 6 - i;
-        }
-    }
-    */
-    /*
-    for(int i=0;i<mPlayers.agari.size();i++){
-        cout << mPlayers.agari[i] << " ";
-    }
-    cout << endl;
-    cout << mPlayers.agari.size() << endl;
-    cout << mTarget << endl;
-    if( mPlayers.agari.size() > 0 )cout << mPlayers.agari[mPlayers.agari.size()-1] << " " << mTarget<<endl;
-    */
     if( mPlayers.agari.size()>0 && mPlayers.agari[mPlayers.agari.size()-1] == mTarget ){//ターゲットがゴールした
         return 6-mPlayers.agari.size();
     }else if( mPlayers.agari.size() == 4 ){//PE-KE
@@ -194,11 +168,13 @@ int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Pl
     
 	//パス以外にできるのならばこちらにもくる
     
-    vector<int> SIM_SCORE, SIM_COUNT;//シミュレーションで使う得点用の配列を用意しておく
+    vector<int> SIM_SCORE(yaku.size(), 0), SIM_COUNT(yaku.size(), 0);//シミュレーションで使う得点用の配列を用意しておく
+    /*
     for(int i=0;i < yaku.size(); i++){
         SIM_SCORE.push_back(0);
         SIM_COUNT.push_back(0);
     }
+    */
     
     //ここでようやく妄想を始める
     for(int idx=0;idx < legalYaku.size();idx++){//すべての合法手に対して
@@ -232,20 +208,11 @@ int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Pl
     return 1;//全合法手リストでの対応する番号を送る
 }
 
-#if 1
 void Delusion::simSubmit( const Yaku &yaku ){
     if( yaku.isPass() ){         //パスをした
         mPlayers.id[mPlayers.turnId()].passed = true;
-        /*
-        if(simPass()==1){   //全員に提出権がなくなる
-            purge();        //場が流れる
-        }
-        */
     }
     else{//なんらか出した
-        
-        //mPlayers.simSubmit(cd);//プレイヤー情報の更新（手札枚数・あがり）
-        //mPlayers.id[mPlayers.turnId()].subtraction(card);//提出カードを差し引く
         mPlayers.id[mPlayers.turnId()].cards_num -= yaku.mNum;//枚数も差し引く
         if(mPlayers.id[mPlayers.turnId()].cards_num<0){
             cout << "maisuugaokasii" << endl;
@@ -256,34 +223,6 @@ void Delusion::simSubmit( const Yaku &yaku ){
         if( mPlayers.id[mPlayers.turnId()].cards_num == 0 ){//あがった
             mPlayers.addAgari( mPlayers.turnId() );
         }
-        /*
-        if(mCard.isKakumei())revKakumei();//革命を起こしたら反転
-        
-        if(cd.is8giri()==1){//8切りだった
-            purge();        //場を流す
-        }else{
-            setOnset(0);            //onset解除
-            
-            mCard = cd;     //場札を置き換える
-            
-            setKaidan( mCard.isKaidan() );
-            setPair( mCard.isPair() );
-            
-            mNum = mCard.mNum;
-            if(mNum==1){//カード枚数
-                setTanki( 1 );
-                //setJoker( mCard.isJoker() );
-                setJTanki( mCard.isJTanki() );
-            }
-            if( isKakumei() ){
-                mRank = mCard.mRankL;//左端
-            }else{
-                mRank = mCard.mRankR;//右端
-            }
-            
-            mSuits = mCard.mSuits;//スーツ
-        }
-        */
         
         if( yaku.is8giri()|| (mTable.mBafuda.isJTanki() && yaku.isSpade3()) ){
             //8切り、スペ3
@@ -293,25 +232,8 @@ void Delusion::simSubmit( const Yaku &yaku ){
             mTable.setOnset(false);
         }
         
-        //mTable.mBafuda = yaku;
         mTable.setBafuda( yaku );
         
-        //縛りの発生可否
-        /*
-        if( mTable.mBafuda.mSuits == yaku.mSuits ){
-            mTable.setShibari(1);
-        }
-        */
-        
-        //革命発生可否
-        /*
-        if( config.isKakumei( yaku ) ){
-            mTable.revKakumei();//反転
-        }
-        */
-        if( yaku.isKakumei() ){
-            mTable.revKakumei();//反転
-        }
     }
     
     if( mTable.isOnset() ){//流れた
@@ -321,71 +243,9 @@ void Delusion::simSubmit( const Yaku &yaku ){
     }else{//やっぱり流れる
         purge();
     }
-    #ifdef DEBUG
-    cout << "table after submit cd" << endl;
-	mTable.print();
-    #endif
-	//exit(1);
-}
-#endif
-#if 0
-void Delusion::simSubmit(const Yaku &cd){
-    //カードcdを提出した時の更新
-	//cout << "submit " << endl;
-	//cd.printBit();
     
-    if(cd.mNum==0){         //パスをした
-        mPlayers.id[mPlayers.turnId()].passed = true;
-        
-        if(isBaAlive()==false){   //全員に提出権がなくなる
-            purge();        //場が流れる
-        }else{
-            mPlayers.nextTurn();
-        }
-    }
-    else{//なんらか出した
-        
-        //mPlayers.simSubmit(cd);//プレイヤー情報の更新（手札枚数・あがり）
-        if(cd.isKakumei())mTable.revKakumei();//革命を起こしたら反転
-        mPlayers.id[mPlayers.turnId()].cards_num -= cd.mNum;
-        if( mPlayers.id[mPlayers.turnId()].cards_num == 0 ){//あがった
-            mPlayers.addAgari( mPlayers.turnId() );
-        }
-        if(cd.is8giri()==1){//8切りだった
-            purge();        //場を流す
-        }else{
-            mPlayers.nextTurn();
-            mTable.setOnset(0);            //onset解除
-            
-            mTable.mBafuda = cd;     //場札を置き換える
-            
-            mTable.setKaidan( mTable.mBafuda.isKaidan() );
-            mTable.setPair( mTable.mBafuda.isPair() );
-            
-            //mNum = mTable.mBafuda.mNum;
-            if(mTable.mBafuda.isTanki()==1){//カード枚数
-                mTable.setTanki( 1 );
-                //setJoker( mCard.isJoker() );
-                mTable.setJTanki( mTable.mBafuda.isJTanki() );
-            }
-            /*
-            if( isKakumei() ){
-                mRank = mCard.mRankL;//左端
-            }else{
-                mRank = mCard.mRankR;//右端
-            }
-            
-            mSuits = mCard.mSuits;//スーツ
-            */
-        }
-    }
-    #ifdef DEBUG
-    cout << "table after submit cd" << endl;
-	print();
-    #endif
-	//exit(1);
 }
-#endif
+
 void Delusion::purge(){//場を流す
     //場札情報を初期化する
     mTable.purge();
