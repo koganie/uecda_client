@@ -6,11 +6,14 @@
 
 using namespace std;
 
+void makeAllYaku2(vector<Yaku> *allYaku, const int hands[8][15], int64 handsbit);
+
 void makeAllYaku(vector<Yaku> *allYaku, const int hands[8][15]);//すべての役を作る
 void makeKaidanFrom815(vector<Yaku> *yaku, const int hands[8][15]);//階段を作る
 void makePairFrom815(vector<Yaku> *yaku, const int hands[8][15]);//ペアを作る
 void makeTankiFrom815(vector<Yaku> *yaku, const int hands[8][15]);//単騎を作る
 void makePass(vector<Yaku> *yaku);//パスを作る
+void makeKaidanFromBit(vector<Yaku> *yaku, const int64 hands);//階段を作る
 
 //これらは不要にする
 void sortKaidan(vector<Yaku> *tky, const vector<Yaku> *atky, const Table &table);

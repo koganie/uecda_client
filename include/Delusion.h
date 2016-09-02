@@ -14,7 +14,7 @@ void printVC(vector<Yaku> yaku);
 
 
 void makeDeck(vector<int> *deck, const int dust[8][15]);
-
+void makeDeck(vector<int> *deck, const int64 dust);
 
 
 class Delusion{
@@ -30,6 +30,7 @@ private:
 
 public:
     Delusion(const Table &table, const int unsubmitted[8][15], const Players &players, const vector<Yaku> &yaku, Random *r, int target);
+    Delusion(const Table &table, const int64 unsubmitted, const Players &players, const vector<Yaku> &yaku, Random *r, int target);
     
     int forwardDelusion(const Yaku &cd, int *depth);
     
@@ -43,5 +44,6 @@ public:
 };
 
 int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Players &players, const vector<Yaku> &yaku, const int dust[8][15], int hands[8][15]);
+int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Players &players, const vector<Yaku> &yaku, const int64 gomi, int hands[8][15]);
 
 #endif

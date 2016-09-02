@@ -2,11 +2,18 @@
 #include <algorithm>
 #include "Yaku.h"
 #include "makeYaku.h"
+#include "debug.h"
 
 using namespace std;
 
 //役を作るようの関数群
 //ただしjoker1枚ルールのみに対応しているため、のちのち拡充する
+
+void pushYaku(vector<Yaku> *allYaku, int64 cd, int suits, int num, int rank, int rank2, int jps, int jpr){
+    //左からカードビット、スート、枚数、左側のランク、右側のランク（階段、joker単騎のとき以外は同じ数字）、使うjokerのスート、使うjokerのランク（使わないときは-1）
+    Yaku yaku(cd, suits, num, rank, rank2, jps, jpr);
+    allYaku->push_back(yaku);
+}
 
 void makeAllYaku(vector<Yaku> *allYaku, const int hands[8][15]){
     //handsから作ることが可能なすべての役を作る
@@ -44,6 +51,61 @@ for(int i=0;i<allYaku->size();i++){
 cout<<"d "<<allYaku->size()<<" " <<pa<<endl;
 */
 }
+
+
+void makeAllYaku2(vector<Yaku> *allYaku, const int hands[8][15], int64 handsbit){
+    //handsから作ることが可能なすべての役を作る
+    //cout<<"a "<<allYaku->size()<<endl;
+    
+    /*
+    int x[8][15]={{0}};
+    convBitTo815(x, handsbit);
+    print815(x);
+    cout<<endl;
+    
+    for(int i=0;i<5;i++){
+        for(int j=0;j<15;j++){
+            x[i][j] = hands[i][j];
+        }
+    }
+    cout << endl;
+    print815(x);
+    //exit(1);
+    */
+    makeKaidanFromBit(allYaku, handsbit);//階段
+/*
+int pa=0;
+    for(int i=0;i<allYaku->size();i++){
+    if((*allYaku)[i].isPass())pa++;
+}    
+cout<<"b "<<allYaku->size()<<" " <<pa<<endl;
+*/
+    makePairFrom815(allYaku, hands);//ペア
+/*
+pa=0;
+for(int i=0;i<allYaku->size();i++){
+    if((*allYaku)[i].isPass())pa++;
+}    
+cout<<"c "<<allYaku->size()<<" " <<pa<<endl;
+*/
+    makeTankiFrom815(allYaku, hands);//単騎
+/*
+pa=0;
+for(int i=0;i<allYaku->size();i++){
+    if((*allYaku)[i].isPass())pa++;
+}    
+cout<<"d "<<allYaku->size()<<" " <<pa<<endl;
+*/
+    makePass(allYaku);//パス
+/*    
+pa=0;
+for(int i=0;i<allYaku->size();i++){
+    if((*allYaku)[i].isPass())pa++;
+}    
+cout<<"d "<<allYaku->size()<<" " <<pa<<endl;
+*/
+}
+
 
 void pickKaidan(vector<Yaku> *kaidan, const vector<Yaku> &allYaku){
     for(int i=0;i<allYaku.size();i++){
@@ -234,6 +296,175 @@ void makeKaidanFrom815(vector<Yaku> *yaku, const int hands[8][15]){
 		}//for(order
 	}//for(suit
 }
+
+void makeKaidanFromBit(vector<Yaku> *yaku, const int64 hands){
+    int64 kaidan1 = 3ull;
+    int64 kaidan2 = 5ull;
+    //cout << "j"<<endl;
+    //printBit(hands);
+    if( hands&IS_JUSED ){//jokerを持っている
+        for(int suit=0; suit<4; suit++){
+            int bitSuit = (1<<suit);
+            //int64 hands1 = hands<<(suit*13);//そのスートの始点を見る
+            //for(int rank=1; rank<13; rank++){//11 12
+            for(int rank=1; rank<13; rank++){//12 13
+                int64 kaidan = kaidan1 << (suit*13 + rank-1);//始点を動かす
+                //int64 hands2 = hands1<<(rank-1);//始点を動かす
+                //int64 temp = hands2&kaidan1;
+                int64 temp = hands&kaidan;
+                int bitnum = popCount64bit(temp);
+
+                //cout<<"k"<<endl;
+                //printBit(hands);
+                //printBit(kaidan);
+                //cout << "kasanari " << bitnum << endl;
+                if( bitnum==2 ){//2つともビットが立っている
+                    //始点から11...で始まる
+                    int64 hd = temp;
+                    int JposSuit = -1;
+                    int JposRank = -1;
+                    bool j_flag = true;
+                    int length = 2;
+                    //joker + 2枚連続で作れる階段
+                    
+                        Yaku cd1(temp|IS_KAIDAN|IS_JUSED, bitSuit, 3, rank-1, rank+1, suit, rank-1);
+                        yaku->push_back(cd1);
+                    
+                    
+                        Yaku cd2(temp|IS_KAIDAN|IS_JUSED, bitSuit, 3, rank, rank+2, suit, rank+length);
+                        yaku->push_back(cd2);
+                    
+                    for(int k=rank+2; k<=13; k++){//11 12 13の右端まで
+                        if( hands&CARDBIT(suit,k) ){
+                            length++;
+                            temp|=CARDBIT(suit,k);
+                            //cout<<suit<<" "<<rank<<" "<<1<<endl;
+                            //printBit(temp);
+                            {
+                                Yaku cd(temp|IS_KAIDAN, bitSuit, length, rank, rank+length-1, JposSuit, JposRank);
+                                yaku->push_back(cd);
+                            }
+                            if( j_flag ){//jokerを使っていなければ
+                                {
+                                    Yaku cd(temp|IS_KAIDAN|IS_JUSED, bitSuit, length, rank, rank+length-1, suit, rank-1);
+                                    yaku->push_back(cd);
+                                }
+                                {
+                                    Yaku cd(temp|IS_KAIDAN|IS_JUSED, bitSuit, length, rank, rank+length-1, suit, rank+length);
+                                    yaku->push_back(cd);
+                                }
+                                for(int l=rank+1; l<k; l++){//階段の始点と終点を除く箇所をjokerに置き換えたバージョンを作る
+                                    int64 jtemp = (temp&(~CARDBIT(suit,l)))|IS_JUSED;//jokerだけ0に返す
+                                    //cout<<suit<<" "<<rank<<" "<<2<<endl;
+                                    //printBit(jtemp);
+                                    Yaku cd(jtemp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, suit, l);
+                                    yaku->push_back(cd);
+                                }
+                            }
+                        }else if( j_flag ){//ないけどjokerを使う
+                            /*
+                            if(length>=3){//これまでで階段が作れていれば、jokerと置き換えるバージョンも作る
+                                for(int l=rank+1; l<k-1; l++){
+                                    int64 jtemp = (temp&(~CARDBIT(suit,l)))|IS_JUSED;//jokerだけ0に返す
+cout<<suit<<" "<<rank<<" "<<2<<endl;
+                            printBit(jtemp);
+                                    Yaku cd(jtemp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, suit, l);
+                                    yaku->push_back(cd);
+                                }
+                            }
+                            */
+                            /*
+                            else{
+                                int64 jtemp = (temp&(~CARDBIT(suit,k+1)))|IS_JUSED;//jokerだけ0に返す
+                                Yaku cd(jtemp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, suit, l);
+                                yaku->push_back(cd);
+                            }
+                            */
+                            //jokerに置き換えたバージョンを作る
+                            JposSuit = suit;
+                            JposRank = k;
+                            length++;
+                            //cout<<suit<<" "<<rank<<" "<<3<<endl;
+                            //printBit(temp);
+                            //Yaku cd(temp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, JposSuit, JposRank);
+                            //yaku->push_back(cd);
+                            j_flag = false;
+                        }else{
+                            k=15;
+                        }
+                    }
+                    //break;
+                }else if(bitnum==1 && rank<12){//11 12 13が最大
+                    //始点から101...で始まる
+                    //jokerは101の0に使うので、後ろが0ならその時点で終了
+                    kaidan = kaidan2 << (suit*13+rank-1);//始点を動かす
+                    temp = hands&kaidan;
+                    
+                    if( popCount64bit(temp)==2 ){
+                        int length = 3;
+                        //101を追加
+                        //cout<<suit<<" "<<rank<<" "<<4<<endl;
+                        //printBit(temp);
+                        {
+                        Yaku cd1(temp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, suit, rank+1);
+                        yaku->push_back(cd1);
+                        }
+                        //伸ばす
+                        for(int k=rank+3; k<=13; k++){//見る点は13まで
+                            if( hands&CARDBIT(suit,k) ){
+                                length++;
+                                temp|=CARDBIT(suit,k);
+                                //cout<<suit<<" "<<rank<<" "<<5<<endl;
+                                //printBit(temp);
+                                Yaku cd(temp|IS_JUSED|IS_KAIDAN, bitSuit, length, rank, rank+length-1, suit, rank+1);
+                                yaku->push_back(cd);
+                            }else{
+                                break;
+                            }
+                        }
+                    }else{
+                        rank+=2;
+                    }
+                }else{
+                    rank++;
+                }
+            }
+        }
+
+    }else{
+//cout<<"9090"<<endl;
+        for(int suit=0; suit<4; suit++){
+            int bitSuit = (1<<suit);
+            //int64 hands1 = hands<<(suit*13);//そのスートの始点を見る
+            for(int rank=1; rank<12; rank++){//11 12 13 が最長（jokerはないので14は考えない）
+                int64 kaidan = kaidan1 << (suit*13+rank-1);//始点を動かす
+                int64 temp = hands&kaidan;
+                //cout<<"k"<<endl;
+                //printBit(hands);
+                //printBit(kaidan);
+                //cout << "kasanari " << popCount64bit(temp) << endl;
+                if( popCount64bit(temp)==2 ){//2つともビットが立っている
+                    //int64 hd = temp;
+                    int length = 2;
+                    for(int k=rank+2; k<14; k++){
+                        if( hands&CARDBIT(suit, k) ){
+                            length++;
+                            temp|=CARDBIT(suit, k);
+                            Yaku cd(temp|IS_KAIDAN, bitSuit, length, rank, rank+length-1, -1, -1);
+                            yaku->push_back(cd);
+                        }else{
+                            break;
+                        }
+                    }
+                }else{
+                    rank++;
+                }
+                //jokerはないので、その他は考えられない
+            }
+        }
+    }
+}
+
 
 void makePairFrom815(vector<Yaku> *yaku, const int hands[8][15]){
 	//記述が品雑になるので場の状況は一切考えない

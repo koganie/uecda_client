@@ -45,7 +45,8 @@ int main(int argc,char* argv[]){
         
         int hands[8][15]={{0}};       //手札をおさめる変数
         int bafuda[8][15]={{0}};      //場札をおさめる変数
-        int gomi[8][15]={{0}};  //すでに提出されたカード集合
+        //int gomi[8][15]={{0}};  //すでに提出されたカード集合
+        int64 gomi = 0ull;
         
         /*ここまで*/
         
@@ -73,7 +74,7 @@ int main(int argc,char* argv[]){
             if( game.isFirstTime() ){   //最初回であれば
                 table.firstGame(hands);     //最初のセッティング
                 players.setPlayers(hands);  //プレイヤーの情報を保存
-                addCard(gomi, hands);       //相手の持ちえないカードに自分の手札を入れる
+                addCardToBit(gomi, hands);       //相手の持ちえないカードに自分の手札を入れる
             }
             else{                       //次回からは更新していく
                 table.setBaInfo(hands); //場の状況の更新
@@ -86,10 +87,11 @@ int main(int argc,char* argv[]){
                 vector<Yaku> myYaku;        //自分の手札から生成できる合法手の集合体
                 makeAllYaku(&myYaku, hands);//合法手をリストアップする
                 
-                selectSubmitCardsByDelusion( &select_cards, table, players, myYaku, gomi, hands);//妄想による選択
-                //selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
-                select_cards.setBitTo815( cards );//815配列に成形する
+                //2種類の提出方法
+                //selectSubmitCardsByDelusion( &select_cards, table, players, myYaku, gomi, hands);//妄想による選択
+                selectSubmitCardsLikeDefault( &select_cards, table, myYaku );//標準クライアントライクな選択
                 
+                select_cards.setBitTo815( cards );//815配列に成形する
                 game.sendCard( cards );//サーバに提示する
                 bool is_passed = game.isPassed();//受理されたかどうか確認する
                 
@@ -106,6 +108,7 @@ int main(int argc,char* argv[]){
                 	exit(1);
                 }
                 else{//提出した
+                    #ifdef COMMENT
                     cout << "BFD:";
                     cout << table.mBafuda.getStr();//場札は何か？
                     cout << " TFD:";
@@ -114,6 +117,7 @@ int main(int argc,char* argv[]){
                     cout <<  "=>";//そんな中
                     cout << select_cards.getStr();//提出した札は
                     cout << endl;
+                    #endif
                 }
                 
             }
@@ -127,8 +131,9 @@ int main(int argc,char* argv[]){
                 table.setBafuda( yaku );        //役を取り換える
             }
             
-            addCard2(gomi, bafuda);             //すでに提出された札の更新
-            
+            //addCard2(gomi, bafuda);             //すでに提出された札の更新
+            gomi |= table.mBafuda.getCardBit();//すでに提出された札の更新
+
             game.checkGameEnd();
         }//1ゲームが終わるまでの繰り返しここまで
         players.sekijun.clear();

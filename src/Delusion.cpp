@@ -43,6 +43,30 @@ Delusion::Delusion(const Table &table, const int unsubmitted[8][15], const Playe
     //print515(playersHand[0]);
 }
 
+Delusion::Delusion(const Table &table, const int64 unsubmitted, const Players &players, const vector<Yaku> &yaku, Random *r, int target){
+    //場情報、未提出札、自分の合法手集合、観測するプレイヤー番号
+    mTable = table;     //テーブルをコピー
+	mPlayers = players;
+    mTarget = target;   //観測したい人
+    random = r;
+    vector<int> deck;   //未提出札集合
+    makeDeck(&deck, ~unsubmitted);//未提出札を構成する
+	muddleVector(&deck);//シャッフルする
+    int playersHand[5][8][15] = {{0}};
+    for(int i=0;i<5;i++){//手札を振り分ける
+    	if(i != target){
+        	randomCardDevide(playersHand[i], &deck, mPlayers.id[i].cards_num);//手札を振り分ける
+        	vector<Yaku> temp;
+            makeAllYaku(&temp, playersHand[i]);//役を生成して
+            mYakus.push_back(temp);//入れる
+    	}else{
+            mYakus.push_back(yaku);//自分のを入れる
+        }
+    }
+    //cout<<"this "<<mYakus[0].size()<<" "<<mYakus[1].size()<<" "<<mYakus[2].size()<<" "<<mYakus[3].size()<<" "<<mYakus[4].size()<<endl;
+    //print515(playersHand[0]);
+}
+
 int Delusion::forwardDelusion(const Yaku &cd, int *depth){
     //仮想提出手による場の更新
     //これを再帰させていき、終局まで行ったら点数を返す
@@ -149,7 +173,83 @@ void makeDeck(vector<int> *deck, const int gomi[8][15]){
     }
 }
 
+void makeDeck(vector<int> *deck, const int64 gomi){
+    //敵の持ちうるカード集合を作る
+    //入力はすでにゲーム中で提出されたカードが1が入った配列
+    //なのでまだ0の項目が未提出のカード
+    int i,j;
+    for(i=0;i<4;i++){
+        for(j=1;j<=13;j++){
+            if( gomi&CARDBIT(i, j) ){
+                deck->push_back( i*14 + j );
+            }
+        }
+    }
+    if( gomi&IS_JUSED ){
+        deck->push_back( 14*4 + 1 );
+    }
+}
+
 int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Players &players, const vector<Yaku> &yaku, const int gomi[8][15], int hands[8][15]){
+    //モンテカルロによる提出
+    
+    //現在出せる合法手分だけ考える
+    Table simTable = table;
+    Players simPlayers = players;
+    vector<Yaku> legalYaku;//操作用役集合
+    pickAllLegalYaku( &legalYaku, yaku, table );//パスを除きこの局面で出せるすべての合法手を選定する
+	makePass( &legalYaku );//パスも含める
+
+    Random random;
+	
+    if( legalYaku.size() == 1 ){//出せる役がパスしかない
+	    *select_cards = legalYaku[0];//パスを載せて終わり
+		return 0;
+	}
+    
+	//パス以外にできるのならばこちらにもくる
+    
+    vector<int> SIM_SCORE(yaku.size(), 0), SIM_COUNT(yaku.size(), 0);//シミュレーションで使う得点用の配列を用意しておく
+    /*
+    for(int i=0;i < yaku.size(); i++){
+        SIM_SCORE.push_back(0);
+        SIM_COUNT.push_back(0);
+    }
+    */
+    
+    //ここでようやく妄想を始める
+    for(int idx=0;idx < legalYaku.size();idx++){//すべての合法手に対して
+    	for(int cnt=0;cnt < 200;cnt++){//200回のシミュレーションを行う
+    	    vector<Yaku> tempYaku;
+    	    tempYaku = yaku;//全部の役集合をコピーする
+    	    Delusion del(simTable, gomi, simPlayers, tempYaku, &random, simPlayers.turnId());//妄想環境のセットアップ
+        	int depth = 0;//妄想の深さ（特に使わないが）
+            SIM_SCORE[idx] += del.startDelusion( legalYaku[idx], &depth );//得点を加算する
+            //cout << SIM_SCORE[idx] << endl;
+            SIM_COUNT[idx]++;//その手に対して割り当てたシミュレーション回数を加算する
+            //exit(1);
+        }
+    }
+    
+	//シミュレーションを回した合法手の中から評価が最大のものを探す
+    vector<double> fin_score;
+    int maxIdx = 0;
+    for(int cnt=0;cnt < legalYaku.size(); cnt++){
+        if(SIM_COUNT[cnt]!=0){
+            fin_score.push_back( (double)SIM_SCORE[cnt]/ SIM_COUNT[cnt]);//期待値を得点とする
+            if(fin_score[cnt] > fin_score[maxIdx]){
+                maxIdx = cnt;
+            }
+        }else{//シミュレーションを割り当ていなければ得点は0とする
+            fin_score.push_back( 0 );
+        }
+    }
+    
+    *select_cards = legalYaku[maxIdx];
+    return 1;//全合法手リストでの対応する番号を送る
+}
+
+int selectSubmitCardsByDelusion(Yaku *select_cards, const Table &table, const Players &players, const vector<Yaku> &yaku, const int64 gomi, int hands[8][15]){
     //モンテカルロによる提出
     
     //現在出せる合法手分だけ考える

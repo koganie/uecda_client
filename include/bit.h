@@ -48,3 +48,7 @@ typedef unsigned long long int int64;
 #define HINMIN 3
 #define DAIHINMIN 4
 
+int64 popCount64bit(int64 x);
+int64 conv815toBit(int x[8][15]);
+void convBitTo815(int x[8][15], int64 y);
+void printBit(int64 x);

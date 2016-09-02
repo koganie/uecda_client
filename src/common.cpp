@@ -105,3 +105,19 @@ int countCard(int card[8][15]){
     }
     return cnt;
 }
+
+void addCardToBit(int64 c1, int c2[8][15]){
+    //c1‚Éc2‚ð‰Á‚¦‚é
+    for(int i=0; i<4; i++){
+        for(int j=0; j<15; j++){
+            if(c2[i][j] != 0){
+                c1 |= CARDBIT(i, j);
+            }
+        }
+    }
+    //joker
+    if(c2[4][0] != 0){
+        c1 |= IS_JUSED;
+    }
+}
+
