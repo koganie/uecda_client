@@ -106,18 +106,18 @@ int countCard(int card[8][15]){
     return cnt;
 }
 
-void addCardToBit(int64 c1, int c2[8][15]){
+void addCardToBit(int64 *c1, int c2[8][15]){
     //c1‚Éc2‚ð‰Á‚¦‚é
     for(int i=0; i<4; i++){
-        for(int j=0; j<15; j++){
+        for(int j=1; j<=13; j++){
             if(c2[i][j] != 0){
-                c1 |= CARDBIT(i, j);
+                *c1 |= CARDBIT(i, j);
             }
         }
     }
     //joker
-    if(c2[4][0] != 0){
-        c1 |= IS_JUSED;
+    if(c2[4][1] != 0){
+        *c1 |= IS_JUSED;
     }
 }
 

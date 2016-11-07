@@ -223,13 +223,7 @@ void Yaku::set815ToBit(int src[8][15]){
 void Yaku::set815ToYaku(int src[8][15]){
     //提出役が本当に提出可能かどうかを確認し、yakuに変換する
     clear();
-    /*
-    if(countCard(data)==0){
-        //パスが明示されている
-        yaku->demoPass();
-        return;
-    }
-    */
+
     int cards_num = 0, joker_num = 0;
     vector<int> suit, rank, fake;//発見されたカードをいれていく
     for(int i=0; i<5; i++){
@@ -279,26 +273,22 @@ void Yaku::set815ToYaku(int src[8][15]){
     }
     
     if(tanki_flag){//それは単騎である
-        //cout<<"tanki"<<endl;
-        set815ToBit( src );
         mNum = cards_num;
         if(joker_num == 1){//joker単騎
             mRankR = 14;
             mRankL = 0;
-            //yaku->setSuit(0);
             mJposSuit = 0;
             mJposRank = 14;
             setJTanki();
             
-        }else{
+        }else{//通常カードの単騎
+            mCardBit |= CARDBIT(suit[0], rank[0]);
             mRankR = rank[0];
             mRankL = rank[0];
             setSuit(suit[0]);
         }
         setTanki();
     }else if(pair_flag){//それはペアである
-        //cout<<"pair"<<endl;
-        set815ToBit( src );
         mNum = cards_num;
         mRankR = rank[0];
         mRankL = rank[0];
@@ -309,12 +299,13 @@ void Yaku::set815ToYaku(int src[8][15]){
             if(fake[i]){
                 mJposSuit = suit[i];
                 mJposRank = rank[i];
+                mCardBit |= IS_JUSED;
+            }else{//通常カードはビットに乗せる
+                mCardBit |= CARDBIT(suit[i], rank[i]);
             }
         }
         setPair();
     }else if(kaidan_flag){//それは階段である
-        //cout<<"kaidan"<<endl;
-        set815ToBit( src );
         mNum = cards_num;
         mRankL = rank[0];//最初に見つかるものが始点に決まっている
         mRankR = rank[0]+cards_num-1;
@@ -323,6 +314,9 @@ void Yaku::set815ToYaku(int src[8][15]){
             if(fake[i]){
                 mJposSuit = suit[i];
                 mJposRank = rank[i];
+                mCardBit |= IS_JUSED;
+            }else{//通常カードはビットに乗せる
+                mCardBit |= CARDBIT(suit[i], rank[i]);
             }
         }
         setKaidan();

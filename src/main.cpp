@@ -74,7 +74,7 @@ int main(int argc,char* argv[]){
             if( game.isFirstTime() ){   //最初回であれば
                 table.firstGame(hands);     //最初のセッティング
                 players.setPlayers(hands);  //プレイヤーの情報を保存
-                addCardToBit(gomi, hands);       //相手の持ちえないカードに自分の手札を入れる
+                addCardToBit(&gomi, hands);       //相手の持ちえないカードに自分の手札を入れる
             }
             else{                       //次回からは更新していく
                 table.setBaInfo(hands); //場の状況の更新
